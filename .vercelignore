@@ -1,0 +1,24 @@
+# Vercel builds in the cloud — never upload local build output or deps.
+node_modules
+.next
+.next-e2e
+.next-build
+out
+build
+
+# test + tooling artifacts
+coverage
+test-results
+playwright-report
+e2e-screenshots
+shot-*.png
+
+# firebase emulator / debug
+.firebase
+*-debug.log
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# local env (prod env vars live in the Vercel dashboard)
+.env*.local

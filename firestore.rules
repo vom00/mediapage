@@ -1,0 +1,262 @@
+rules_version = '2';
+
+// mediapage Firestore rules.
+// Uniqueness of handles is enforced structurally: handles/{handle}
+// is create-only, and profile creation must claim its handle in the
+// same atomic batch (checked with getAfter on both sides).
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function validHandle(handle) {
+      return handle is string && handle.matches('^[a-z][a-z0-9_]{2,19}$');
+    }
+
+    function validDisplayName(name) {
+      return name is string && name.size() >= 1 && name.size() <= 50;
+    }
+
+    // Avatars are stored inline as data URLs (no paid Cloud Storage),
+    // so cap the field: ~100k chars holds a 256px JPEG with headroom
+    // while keeping the profile doc cheap to read.
+    function validOptionalProfileFields(data) {
+      return (!('bio' in data) || (data.bio is string && data.bio.size() <= 280))
+        && (!('avatarUrl' in data) || (data.avatarUrl is string && data.avatarUrl.size() <= 100000));
+    }
+
+    // Read access to a private profile requires an *approved* follow
+    // edge. A follower cannot self-approve (see the follows rules), so
+    // mere existence of the edge is not enough — this closes the
+    // self-service "followers-only" bypass.
+    function isApprovedFollowerOf(uid) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/follows/$(request.auth.uid + '_' + uid))
+        // .get(..., false) treats an edge missing the field (e.g. legacy
+        // data) as not approved — the secure default.
+        && get(/databases/$(database)/documents/follows/$(request.auth.uid + '_' + uid)).data.get('approved', false) == true;
+    }
+
+    match /users/{uid} {
+      // Followers-only profiles are readable by the owner and their
+      // followers; public ones by anyone.
+      allow read: if isOwner(uid)
+        || resource.data.isPublic == true
+        || isApprovedFollowerOf(uid);
+      allow create: if isOwner(uid)
+        && request.resource.data.keys().hasOnly(['uid', 'handle', 'displayName', 'bio', 'avatarUrl', 'isPublic', 'defaultCommentsOn', 'createdAt'])
+        && request.resource.data.uid == uid
+        && validHandle(request.resource.data.handle)
+        && validDisplayName(request.resource.data.displayName)
+        && request.resource.data.isPublic is bool
+        && request.resource.data.defaultCommentsOn is bool
+        && request.resource.data.createdAt is timestamp
+        && validOptionalProfileFields(request.resource.data)
+        // The handle doc must be claimed by this uid in the same batch.
+        && getAfter(/databases/$(database)/documents/handles/$(request.resource.data.handle)).data.uid == uid;
+      allow update: if isOwner(uid)
+        && request.resource.data.keys().hasOnly(['uid', 'handle', 'displayName', 'bio', 'avatarUrl', 'isPublic', 'defaultCommentsOn', 'createdAt', 'deleted'])
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.createdAt == resource.data.createdAt
+        && validDisplayName(request.resource.data.displayName)
+        && request.resource.data.isPublic is bool
+        && request.resource.data.defaultCommentsOn is bool
+        && validOptionalProfileFields(request.resource.data)
+        && (!('deleted' in request.resource.data) || request.resource.data.deleted is bool)
+        && (
+          // Either the handle is untouched, or it is swapped in the
+          // same batch: claim the new lookup doc, release the old.
+          request.resource.data.handle == resource.data.handle
+          || (
+            validHandle(request.resource.data.handle)
+            && getAfter(/databases/$(database)/documents/handles/$(request.resource.data.handle)).data.uid == uid
+            && !existsAfter(/databases/$(database)/documents/handles/$(resource.data.handle))
+          )
+        );
+      allow delete: if false;
+    }
+
+    match /handles/{handle} {
+      allow read: if true;
+      allow create: if signedIn()
+        && validHandle(handle)
+        && request.resource.data.keys().hasOnly(['uid'])
+        && request.resource.data.uid == request.auth.uid
+        // The profile written in the same batch must record this handle.
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.handle == handle;
+      allow update: if false;
+      // Released only by its owner, and only when the profile no
+      // longer points at it after the batch (handle change).
+      allow delete: if signedIn()
+        && resource.data.uid == request.auth.uid
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.handle != handle;
+    }
+
+    // Favorite shelves: users/{uid}/shelves/{category}. Public to
+    // read, owner-only to write, hard-capped at five picks even if
+    // the client lies.
+    match /users/{uid}/shelves/{category} {
+      // Shelves inherit the profile's privacy.
+      allow read: if isOwner(uid)
+        || get(/databases/$(database)/documents/users/$(uid)).data.isPublic == true
+        || isApprovedFollowerOf(uid);
+      allow create, update: if isOwner(uid)
+        && category in ['movie', 'shows', 'music', 'game', 'book']
+        && request.resource.data.keys().hasOnly(['uid', 'category', 'picks'])
+        && request.resource.data.uid == uid
+        && request.resource.data.category == category
+        && request.resource.data.picks is list
+        && request.resource.data.picks.size() <= 5;
+      allow delete: if isOwner(uid);
+    }
+
+    // Private per-user metadata, owner-only. Holds the notification
+    // "seen" marker (users/{uid}/meta/notifications). Kept off the
+    // public profile doc so the last time you checked your notifications
+    // never leaks to anyone else.
+    match /users/{uid}/meta/{docId} {
+      allow read: if isOwner(uid);
+      allow create, update: if isOwner(uid)
+        && docId == 'notifications'
+        && request.resource.data.keys().hasOnly(['seenAt'])
+        && request.resource.data.seenAt is timestamp;
+      allow delete: if false;
+    }
+
+    // The follower's identity is stamped on the edge so an owner can
+    // review a request without reading the requester's profile. It must
+    // match the requester's real profile (same pattern as author
+    // stamps), so a request can't impersonate someone else.
+    function validRequesterStamp(r) {
+      return r is map
+        && r.keys().hasOnly(['handle', 'displayName', 'avatarUrl'])
+        && r.handle is string
+        && r.displayName is string
+        // Stamps never carry inline data-URL avatars (only a short URL,
+        // if any), so a small cap keeps edges lean.
+        && (!('avatarUrl' in r) || (r.avatarUrl is string && r.avatarUrl.size() <= 2000));
+    }
+
+    function requesterIsSelf(r) {
+      return r.handle == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.handle
+        && r.displayName == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.displayName;
+    }
+
+    // Follow edges: doc id is `${followerUid}_${followedUid}` so an edge
+    // can exist at most once. Following a public account is instantly
+    // approved; following a private account creates a pending request
+    // (approved=false) that grants no access until the *owner* flips it
+    // to approved. The follower can never self-approve.
+    match /follows/{edgeId} {
+      allow read: if true;
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['followerUid', 'followedUid', 'requester', 'approved', 'createdAt'])
+        && request.resource.data.followerUid == request.auth.uid
+        && request.resource.data.followedUid is string
+        && request.resource.data.followerUid != request.resource.data.followedUid
+        && edgeId == request.auth.uid + '_' + request.resource.data.followedUid
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.approved is bool
+        && validRequesterStamp(request.resource.data.requester)
+        && requesterIsSelf(request.resource.data.requester)
+        && (
+          // Public target: the follow is instantly approved.
+          (get(/databases/$(database)/documents/users/$(request.resource.data.followedUid)).data.isPublic == true
+            && request.resource.data.approved == true)
+          // Private target: a pending request only the owner can approve.
+          || (get(/databases/$(database)/documents/users/$(request.resource.data.followedUid)).data.isPublic == false
+            && request.resource.data.approved == false)
+        );
+      // Only the followed user approves, flipping pending -> approved.
+      // Nothing else may change, so a follower can't self-approve.
+      allow update: if signedIn()
+        && request.auth.uid == resource.data.followedUid
+        && resource.data.approved == false
+        && request.resource.data.approved == true
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['approved']);
+      // The follower can unfollow / cancel a request; the followed user
+      // can reject a request or remove an existing follower.
+      allow delete: if signedIn() && (
+        resource.data.followerUid == request.auth.uid
+        || resource.data.followedUid == request.auth.uid
+      );
+    }
+
+    function validAuthorStamp(a) {
+      return a is map
+        && a.keys().hasOnly(['handle', 'displayName', 'avatarUrl'])
+        && a.handle is string
+        && a.displayName is string
+        // Author stamps carry at most a short URL, never an inline
+        // data-URL avatar (those stay on the profile doc).
+        && (!('avatarUrl' in a) || (a.avatarUrl is string && a.avatarUrl.size() <= 2000));
+    }
+
+    // The denormalized author stamp must match the posting user's
+    // real profile, so a forged stamp can't impersonate someone
+    // else (the byline links to /u/{handle}). get() is cached per
+    // request, so both reads cost one document read.
+    function authorIsSelf(a) {
+      return a.handle == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.handle
+        && a.displayName == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.displayName;
+    }
+
+    // Recommendations are intentionally world-readable, by product
+    // decision, even for authors with a followers-only profile: posting
+    // a recommendation is a public act and the UI warns about this when
+    // composing. (A profile's privacy gates the profile and its
+    // shelves, not its recommendations.) Immutable after posting except
+    // for the comments toggle; deletable by their author.
+    match /recommendations/{recId} {
+      allow read: if true;
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid', 'author', 'item', 'note', 'commentsEnabled', 'createdAt'])
+        && validAuthorStamp(request.resource.data.author)
+        && authorIsSelf(request.resource.data.author)
+        && request.resource.data.item is map
+        && request.resource.data.item.id is string
+        && request.resource.data.item.title is string
+        && request.resource.data.item.imageUrl is string
+        && request.resource.data.note is string
+        && request.resource.data.note.size() >= 1
+        && request.resource.data.note.size() <= 500
+        && request.resource.data.commentsEnabled is bool
+        && request.resource.data.createdAt is timestamp;
+      allow update: if signedIn()
+        && request.auth.uid == resource.data.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentsEnabled'])
+        && request.resource.data.commentsEnabled is bool;
+      allow delete: if signedIn() && request.auth.uid == resource.data.uid;
+
+      // Comments live under their recommendation. Writable only while
+      // the author has the toggle on; toggling it off hides them in
+      // the UI but never destroys them.
+      match /comments/{commentId} {
+        allow read: if true;
+        allow create: if signedIn()
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.keys().hasOnly(['uid', 'recommendationId', 'author', 'body', 'createdAt'])
+          && request.resource.data.recommendationId == recId
+          && validAuthorStamp(request.resource.data.author)
+          && authorIsSelf(request.resource.data.author)
+          && request.resource.data.body is string
+          && request.resource.data.body.size() >= 1
+          && request.resource.data.body.size() <= 500
+          && request.resource.data.createdAt is timestamp
+          && get(/databases/$(database)/documents/recommendations/$(recId)).data.commentsEnabled == true;
+        allow update: if false;
+        // The commenter or the recommendation author (moderation).
+        allow delete: if signedIn() && (
+          request.auth.uid == resource.data.uid
+          || request.auth.uid == get(/databases/$(database)/documents/recommendations/$(recId)).data.uid
+        );
+      }
+    }
+  }
+}
