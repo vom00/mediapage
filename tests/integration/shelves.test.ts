@@ -7,7 +7,9 @@ import {
   DuplicatePickError,
   removePick,
   setShelfPicks,
+  SHELF_CAPACITY,
   ShelfFullError,
+  WATCHLIST,
 } from "@/lib/shelves";
 import type { MediaItem } from "@/lib/types";
 import {
@@ -71,15 +73,46 @@ describe("shelves", () => {
     );
   });
 
-  test("addPick blocks the sixth pick with ShelfFullError", async () => {
-    for (let i = 1; i <= 5; i++) {
+  test("addPick allows more than five picks now", async () => {
+    for (let i = 1; i <= 6; i++) {
       await addPick(owner.db, ownerUid, pick(String(i)));
     }
-    await expect(addPick(owner.db, ownerUid, pick("6"))).rejects.toThrow(
-      ShelfFullError,
-    );
     const snap = await getDoc(doc(owner.db, "users", ownerUid, "shelves", "movie"));
-    expect((snap.data() as { picks: MediaItem[] }).picks).toHaveLength(5);
+    expect((snap.data() as { picks: MediaItem[] }).picks).toHaveLength(6);
+  });
+
+  test("addPick blocks the pick past capacity with ShelfFullError", async () => {
+    const full = Array.from({ length: SHELF_CAPACITY }, (_, i) =>
+      pick(String(i + 1)),
+    );
+    await setShelfPicks(owner.db, ownerUid, "movie", full);
+    await expect(
+      addPick(owner.db, ownerUid, pick("overflow")),
+    ).rejects.toThrow(ShelfFullError);
+    const snap = await getDoc(doc(owner.db, "users", ownerUid, "shelves", "movie"));
+    expect((snap.data() as { picks: MediaItem[] }).picks).toHaveLength(
+      SHELF_CAPACITY,
+    );
+  });
+
+  test("addPick can file mixed media onto the watchlist", async () => {
+    const game: MediaItem = {
+      id: "igdb:1",
+      source: "igdb",
+      sourceId: "1",
+      category: "game",
+      title: "Elden Ring",
+      imageUrl: "/covers/placeholder.svg",
+    };
+    await addPick(owner.db, ownerUid, game, WATCHLIST);
+    const snap = await getDoc(
+      doc(owner.db, "users", ownerUid, "shelves", "watchlist"),
+    );
+    expect(snap.exists()).toBe(true);
+    const data = snap.data() as { category: string; picks: MediaItem[] };
+    expect(data.category).toBe("watchlist");
+    // The item keeps its own media category so it renders as a game.
+    expect(data.picks[0].category).toBe("game");
   });
 
   test("setShelfPicks persists a reorder", async () => {
@@ -114,15 +147,40 @@ describe("shelves", () => {
     ).rejects.toThrow(DENIED);
   });
 
-  test("rules: a lying client cannot store six picks directly", async () => {
-    const six = [1, 2, 3, 4, 5, 6].map((n) => pick(String(n)));
+  test("rules: a lying client cannot store more than the capacity", async () => {
+    const overCap = Array.from({ length: SHELF_CAPACITY + 1 }, (_, i) =>
+      pick(String(i + 1)),
+    );
     await expect(
       setDoc(doc(owner.db, "users", ownerUid, "shelves", "movie"), {
         uid: ownerUid,
         category: "movie",
-        picks: six,
+        picks: overCap,
       }),
     ).rejects.toThrow(DENIED);
+  });
+
+  test("rules: storing more than five picks is allowed now", async () => {
+    const six = [1, 2, 3, 4, 5, 6].map((n) => pick(String(n)));
+    await setDoc(doc(owner.db, "users", ownerUid, "shelves", "movie"), {
+      uid: ownerUid,
+      category: "movie",
+      picks: six,
+    });
+    const snap = await getDoc(doc(owner.db, "users", ownerUid, "shelves", "movie"));
+    expect((snap.data() as { picks: MediaItem[] }).picks).toHaveLength(6);
+  });
+
+  test("rules: the watchlist shelf is accepted", async () => {
+    await setDoc(doc(owner.db, "users", ownerUid, "shelves", "watchlist"), {
+      uid: ownerUid,
+      category: "watchlist",
+      picks: [pick("1")],
+    });
+    const snap = await getDoc(
+      doc(owner.db, "users", ownerUid, "shelves", "watchlist"),
+    );
+    expect(snap.exists()).toBe(true);
   });
 
   test("rules: unknown shelf categories are rejected", async () => {

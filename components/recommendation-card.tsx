@@ -17,6 +17,7 @@ import {
   type RecommendationDoc,
 } from "@/lib/recommendations";
 import { formatRelativeTime } from "@/lib/relative-time";
+import { useAvatarUrl } from "@/lib/use-avatar";
 
 const iconButtonClass =
   "flex size-11 items-center justify-center border border-edge text-ink-muted transition-colors duration-200 hover:border-glow hover:text-ink disabled:opacity-40";
@@ -26,6 +27,20 @@ function Timestamp({ at }: { at: { toDate(): Date } | null }) {
     <span className="font-label text-xs text-ink-muted">
       {formatRelativeTime(at ? at.toDate() : new Date())}
     </span>
+  );
+}
+
+// The comment stamp omits data-URL avatars, so hydrate the commenter's
+// picture from their live profile.
+function CommentAvatar({ comment }: { comment: CommentDoc }) {
+  const src = useAvatarUrl(comment.uid, comment.author.avatarUrl);
+  return (
+    <Avatar
+      src={src}
+      name={comment.author.displayName}
+      alt={`${comment.author.displayName}'s avatar`}
+      className="size-8 shrink-0 rounded-full border border-edge bg-surface-raised text-sm"
+    />
   );
 }
 
@@ -184,12 +199,7 @@ export function RecommendationCard({ rec }: { rec: RecommendationDoc }) {
             <ul className="mt-4 flex list-none flex-col gap-4 p-0">
               {comments.map((comment) => (
                 <li key={comment.id} className="flex items-start gap-3">
-                  <Avatar
-                    src={comment.author.avatarUrl}
-                    name={comment.author.displayName}
-                    alt={`${comment.author.displayName}'s avatar`}
-                    className="size-8 shrink-0 rounded-full border border-edge bg-surface-raised text-sm"
-                  />
+                  <CommentAvatar comment={comment} />
                   <div className="min-w-0 flex-1">
                     <p className="flex items-center gap-3 text-sm text-ink-muted">
                       <span className="font-label">@{comment.author.handle}</span>

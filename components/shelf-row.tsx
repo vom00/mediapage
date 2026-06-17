@@ -4,11 +4,17 @@ import { doc, onSnapshot } from "firebase/firestore";
 import { ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { CoverImage } from "@/components/cover-image";
 import { ShelfPiece } from "@/components/shelf-piece";
-import { CATEGORY_LABELS } from "@/lib/categories";
 import { db } from "@/lib/firebase/client";
 import { PIECE_ASPECT } from "@/lib/shelf-piece";
-import { movePick, removePick, setShelfPicks, SHELF_MAX } from "@/lib/shelves";
+import {
+  movePick,
+  removePick,
+  setShelfPicks,
+  SHELF_PREVIEW_COUNT,
+  type ShelfKey,
+} from "@/lib/shelves";
 import type { MediaCategory, MediaItem } from "@/lib/types";
 import { useShelfMotion } from "@/lib/use-shelf-motion";
 
@@ -17,35 +23,43 @@ const controlClass =
 
 export function ShelfRow({
   uid,
-  category,
+  shelfKey,
+  label,
   isOwner,
+  addHref,
   revealDelay = 0,
+  mixed = false,
 }: {
   uid: string;
-  category: MediaCategory;
+  shelfKey: ShelfKey;
+  label: string;
   isOwner: boolean;
+  addHref: string;
   revealDelay?: number;
+  // The watchlist holds mixed media, so each pick takes its own
+  // category's shape rather than one shared aspect for the row.
+  mixed?: boolean;
 }) {
-  const label = CATEGORY_LABELS[category];
   const [picks, setPicks] = useState<MediaItem[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
   const dragFrom = useRef<number | null>(null);
   const caseRef = useShelfMotion(picks.map((p) => p.id).join("|"));
 
   useEffect(() => {
-    return onSnapshot(doc(db, "users", uid, "shelves", category), (snap) => {
+    return onSnapshot(doc(db, "users", uid, "shelves", shelfKey), (snap) => {
       setPicks(
         snap.exists() ? ((snap.data() as { picks?: MediaItem[] }).picks ?? []) : [],
       );
     });
-  }, [uid, category]);
+  }, [uid, shelfKey]);
 
   async function persist(next: MediaItem[]) {
     setError(null);
     const previous = picks;
     setPicks(next);
     try {
-      await setShelfPicks(db, uid, category, next);
+      await setShelfPicks(db, uid, shelfKey, next);
     } catch {
       setPicks(previous);
       setError("That change didn't save. Try again.");
@@ -55,31 +69,55 @@ export function ShelfRow({
   async function handleRemove(item: MediaItem) {
     setError(null);
     try {
-      await removePick(db, uid, category, item.id);
+      await removePick(db, uid, shelfKey, item.id);
     } catch {
       setError("That change didn't save. Try again.");
     }
   }
 
-  const emptySlots = Math.max(0, SHELF_MAX - picks.length);
-  const aspect = PIECE_ASPECT[category];
+  // One shape for the whole row so it stays even: a category shelf uses
+  // its piece's aspect; the mixed watchlist uses a neutral portrait and
+  // renders flat covers, since its varied media have no single piece
+  // shape that could line up (a vinyl box would be an ellipse, etc.).
+  const aspect = mixed
+    ? "aspect-[2/3]"
+    : PIECE_ASPECT[shelfKey as MediaCategory];
+
+  // Only the featured few show until "See all" expands the rest.
+  const visible = expanded ? picks : picks.slice(0, SHELF_PREVIEW_COUNT);
+  const hiddenCount = Math.max(0, picks.length - SHELF_PREVIEW_COUNT);
+  // Keep a near-empty shelf looking like a full row of slots; once it is
+  // expanded or already at the featured count, drop the padding.
+  const emptySlots =
+    !expanded && picks.length < SHELF_PREVIEW_COUNT
+      ? SHELF_PREVIEW_COUNT - picks.length
+      : 0;
 
   return (
     <section
-      aria-labelledby={`shelf-${category}`}
+      aria-labelledby={`shelf-${shelfKey}`}
       className="reveal border-t border-edge py-8"
       style={{ "--reveal-delay": `${revealDelay}ms` } as React.CSSProperties}
     >
-      <div className="flex items-baseline justify-between">
+      <div className="flex items-baseline justify-between gap-4">
         <h2
-          id={`shelf-${category}`}
+          id={`shelf-${shelfKey}`}
           className="font-display text-2xl tracking-tight"
         >
           {label}
         </h2>
-        <p className="font-label text-xs text-ink-muted">
-          {picks.length} / {SHELF_MAX}
-        </p>
+        <div className="flex shrink-0 items-baseline gap-4">
+          {isOwner ? (
+            <Link
+              href={addHref}
+              aria-label={`Add to your ${label} shelf`}
+              className="font-label text-xs uppercase tracking-[0.2em] text-ink-muted transition-colors duration-200 hover:text-ink"
+            >
+              + Add
+            </Link>
+          ) : null}
+          <p className="font-label text-xs text-ink-muted">{picks.length}</p>
+        </div>
       </div>
 
       {error ? (
@@ -88,8 +126,11 @@ export function ShelfRow({
         </p>
       ) : null}
 
-      <ul className="mt-6 flex list-none items-stretch overflow-x-auto p-0 pb-7 sm:grid sm:grid-cols-5 sm:overflow-visible">
-        {picks.map((item, index) => (
+      <ul
+        id={`shelf-list-${shelfKey}`}
+        className="mt-6 flex list-none items-stretch overflow-x-auto p-0 pb-7 sm:grid sm:grid-cols-5 sm:overflow-visible"
+      >
+        {visible.map((item, index) => (
           <li
             key={item.id}
             className="flex w-40 shrink-0 flex-col sm:w-auto"
@@ -111,7 +152,20 @@ export function ShelfRow({
               ref={caseRef(item.id)}
               className={`shelf-case relative mx-2 w-full ${aspect}`}
             >
-              <ShelfPiece item={item} />
+              {mixed ? (
+                <div className="absolute inset-0 overflow-hidden rounded-sm border border-edge bg-surface">
+                  <CoverImage
+                    src={item.imageUrl}
+                    alt={
+                      item.year
+                        ? `${item.title} (${item.year}) cover art`
+                        : `${item.title} cover art`
+                    }
+                  />
+                </div>
+              ) : (
+                <ShelfPiece item={item} />
+              )}
             </div>
             <div data-testid="shelf-plank" aria-hidden="true" className="shelf-plank" />
             <h3 className="mt-2 h-4 truncate px-1 text-center text-xs font-normal text-ink-muted">
@@ -157,7 +211,7 @@ export function ShelfRow({
           >
             {isOwner ? (
               <Link
-                href={`/library?category=${category}`}
+                href={addHref}
                 aria-label={`Add to your ${label} shelf`}
                 className={`mx-2 flex w-full ${aspect} items-center justify-center border border-dashed border-edge text-ink-muted transition-colors duration-200 hover:border-glow hover:text-ink`}
               >
@@ -175,6 +229,18 @@ export function ShelfRow({
           </li>
         ))}
       </ul>
+
+      {hiddenCount > 0 ? (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          aria-expanded={expanded}
+          aria-controls={`shelf-list-${shelfKey}`}
+          className="font-label text-xs uppercase tracking-[0.2em] text-ink-muted underline underline-offset-4 transition-colors duration-200 hover:text-ink"
+        >
+          {expanded ? "Show less" : `See all ${picks.length}`}
+        </button>
+      ) : null}
     </section>
   );
 }

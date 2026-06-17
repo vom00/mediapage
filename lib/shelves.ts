@@ -7,14 +7,26 @@ import {
 } from "firebase/firestore";
 import type { MediaCategory, MediaItem } from "@/lib/types";
 
-// Five favorites per shelf, enforced here, in firestore.rules, and
-// in the UI.
-export const SHELF_MAX = 5;
+// A shelf is keyed by one of the five media categories or by the
+// catch-all "watchlist", which collects mixed media a user means to get
+// to. Same storage shape, same rules, same per-shelf cap.
+export type ShelfKey = MediaCategory | "watchlist";
+
+export const WATCHLIST: ShelfKey = "watchlist";
+
+// How many picks a shelf shows on the profile before "See all" reveals
+// the rest. Users can add far more; only the featured few sit out front.
+export const SHELF_PREVIEW_COUNT = 5;
+
+// Hard ceiling per shelf, enforced here, in firestore.rules, and in the
+// UI. Generous enough to feel unlimited while keeping the shelf document
+// cheap to read and comfortably under Firestore's 1 MB limit.
+export const SHELF_CAPACITY = 100;
 
 export class ShelfFullError extends Error {
   constructor() {
     super(
-      `This shelf already holds ${SHELF_MAX} favorites. Remove one first to make room.`,
+      `This shelf is full at ${SHELF_CAPACITY} items. Remove one to make room.`,
     );
     this.name = "ShelfFullError";
   }
@@ -57,28 +69,31 @@ export function sanitizeMediaItem(item: MediaItem): MediaItem {
   return clean;
 }
 
-function shelfRef(db: Firestore, uid: string, category: MediaCategory) {
-  return doc(db, "users", uid, "shelves", category);
+function shelfRef(db: Firestore, uid: string, shelf: ShelfKey) {
+  return doc(db, "users", uid, "shelves", shelf);
 }
 
 export async function getShelfPicks(
   db: Firestore,
   uid: string,
-  category: MediaCategory,
+  shelf: ShelfKey,
 ): Promise<MediaItem[]> {
-  const snap = await getDoc(shelfRef(db, uid, category));
+  const snap = await getDoc(shelfRef(db, uid, shelf));
   if (!snap.exists()) return [];
   return (snap.data() as { picks?: MediaItem[] }).picks ?? [];
 }
 
 // Appends atomically; the transaction re-reads the shelf so two
-// concurrent adds cannot push it past SHELF_MAX.
+// concurrent adds cannot push it past SHELF_CAPACITY. Defaults to the
+// item's own category shelf, or pass an explicit shelf (e.g. WATCHLIST)
+// to file the same item somewhere else.
 export async function addPick(
   db: Firestore,
   uid: string,
   item: MediaItem,
+  shelf: ShelfKey = item.category,
 ): Promise<void> {
-  const ref = shelfRef(db, uid, item.category);
+  const ref = shelfRef(db, uid, shelf);
   await runTransaction(db, async (tx) => {
     const snap = await tx.get(ref);
     const picks = snap.exists()
@@ -87,12 +102,12 @@ export async function addPick(
     if (picks.some((p) => p.id === item.id)) {
       throw new DuplicatePickError(item.title);
     }
-    if (picks.length >= SHELF_MAX) {
+    if (picks.length >= SHELF_CAPACITY) {
       throw new ShelfFullError();
     }
     tx.set(ref, {
       uid,
-      category: item.category,
+      category: shelf,
       picks: [...picks, sanitizeMediaItem(item)],
     });
   });
@@ -101,15 +116,15 @@ export async function addPick(
 export async function setShelfPicks(
   db: Firestore,
   uid: string,
-  category: MediaCategory,
+  shelf: ShelfKey,
   picks: MediaItem[],
 ): Promise<void> {
-  if (picks.length > SHELF_MAX) {
+  if (picks.length > SHELF_CAPACITY) {
     throw new ShelfFullError();
   }
-  await setDoc(shelfRef(db, uid, category), {
+  await setDoc(shelfRef(db, uid, shelf), {
     uid,
-    category,
+    category: shelf,
     picks: picks.map(sanitizeMediaItem),
   });
 }
@@ -117,14 +132,14 @@ export async function setShelfPicks(
 export async function removePick(
   db: Firestore,
   uid: string,
-  category: MediaCategory,
+  shelf: ShelfKey,
   itemId: string,
 ): Promise<void> {
-  const picks = await getShelfPicks(db, uid, category);
+  const picks = await getShelfPicks(db, uid, shelf);
   await setShelfPicks(
     db,
     uid,
-    category,
+    shelf,
     picks.filter((p) => p.id !== itemId),
   );
 }

@@ -1,5 +1,11 @@
 import { describe, expect, test } from "vitest";
-import { movePick, sanitizeMediaItem, SHELF_MAX } from "@/lib/shelves";
+import {
+  movePick,
+  sanitizeMediaItem,
+  SHELF_CAPACITY,
+  SHELF_PREVIEW_COUNT,
+  WATCHLIST,
+} from "@/lib/shelves";
 import type { MediaItem } from "@/lib/types";
 
 const item = (id: string): MediaItem => ({
@@ -11,9 +17,18 @@ const item = (id: string): MediaItem => ({
   imageUrl: "/covers/placeholder.svg",
 });
 
-describe("SHELF_MAX", () => {
-  test("is five picks per shelf", () => {
-    expect(SHELF_MAX).toBe(5);
+describe("shelf constants", () => {
+  test("features five picks per shelf before See all", () => {
+    expect(SHELF_PREVIEW_COUNT).toBe(5);
+  });
+
+  test("caps each shelf at a safe ceiling above the preview count", () => {
+    expect(SHELF_CAPACITY).toBe(100);
+    expect(SHELF_CAPACITY).toBeGreaterThan(SHELF_PREVIEW_COUNT);
+  });
+
+  test("watchlist is its own shelf key", () => {
+    expect(WATCHLIST).toBe("watchlist");
   });
 });
 

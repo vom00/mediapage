@@ -9,7 +9,7 @@ import { FieldError, labelClass } from "@/components/form-field";
 import { CATEGORY_LABELS, SOURCE_NAMES } from "@/lib/categories";
 import { db } from "@/lib/firebase/client";
 import { postRecommendation } from "@/lib/recommendations";
-import { addPick } from "@/lib/shelves";
+import { addPick, WATCHLIST } from "@/lib/shelves";
 import type { MediaItem } from "@/lib/types";
 
 type AddState = "idle" | "busy" | "added";
@@ -25,6 +25,7 @@ export function MediaDetailDialog({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const { user, profile, status } = useAuth();
   const [addState, setAddState] = useState<AddState>("idle");
+  const [watchState, setWatchState] = useState<AddState>("idle");
   const [error, setError] = useState<string | null>(null);
   const [recState, setRecState] = useState<RecState>("closed");
   const [note, setNote] = useState("");
@@ -36,6 +37,7 @@ export function MediaDetailDialog({
   if (item !== prevItem) {
     setPrevItem(item);
     setAddState("idle");
+    setWatchState("idle");
     setError(null);
     setRecState("closed");
     setNote("");
@@ -59,6 +61,21 @@ export function MediaDetailDialog({
       setAddState("added");
     } catch (err) {
       setAddState("idle");
+      setError(
+        err instanceof Error ? err.message : "Something went wrong. Try again.",
+      );
+    }
+  }
+
+  async function handleAddWatchlist() {
+    if (!user || !item) return;
+    setError(null);
+    setWatchState("busy");
+    try {
+      await addPick(db, user.uid, item, WATCHLIST);
+      setWatchState("added");
+    } catch (err) {
+      setWatchState("idle");
       setError(
         err instanceof Error ? err.message : "Something went wrong. Try again.",
       );
@@ -183,6 +200,23 @@ export function MediaDetailDialog({
                   Log in to add this to your shelf
                 </Link>
               )}
+
+              {status === "ready" ? (
+                watchState === "added" ? (
+                  <p className="border-l-2 border-glow pl-3 text-sm">
+                    Added to your watchlist.
+                  </p>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleAddWatchlist}
+                    disabled={watchState === "busy"}
+                    className="liquid-glass flex min-h-11 w-fit items-center rounded-full px-6 text-sm text-ink transition-opacity duration-200 hover:opacity-90 disabled:opacity-50"
+                  >
+                    Add to watchlist
+                  </button>
+                )
+              ) : null}
 
               {status === "ready" && recState === "closed" ? (
                 <button

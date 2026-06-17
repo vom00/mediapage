@@ -27,7 +27,8 @@ service cloud.firestore {
     // while keeping the profile doc cheap to read.
     function validOptionalProfileFields(data) {
       return (!('bio' in data) || (data.bio is string && data.bio.size() <= 280))
-        && (!('avatarUrl' in data) || (data.avatarUrl is string && data.avatarUrl.size() <= 100000));
+        && (!('avatarUrl' in data) || (data.avatarUrl is string && data.avatarUrl.size() <= 100000))
+        && (!('layout' in data) || data.layout in ['stacked', 'grid']);
     }
 
     // Read access to a private profile requires an *approved* follow
@@ -49,7 +50,7 @@ service cloud.firestore {
         || resource.data.isPublic == true
         || isApprovedFollowerOf(uid);
       allow create: if isOwner(uid)
-        && request.resource.data.keys().hasOnly(['uid', 'handle', 'displayName', 'bio', 'avatarUrl', 'isPublic', 'defaultCommentsOn', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['uid', 'handle', 'displayName', 'bio', 'avatarUrl', 'isPublic', 'defaultCommentsOn', 'layout', 'createdAt'])
         && request.resource.data.uid == uid
         && validHandle(request.resource.data.handle)
         && validDisplayName(request.resource.data.displayName)
@@ -60,7 +61,7 @@ service cloud.firestore {
         // The handle doc must be claimed by this uid in the same batch.
         && getAfter(/databases/$(database)/documents/handles/$(request.resource.data.handle)).data.uid == uid;
       allow update: if isOwner(uid)
-        && request.resource.data.keys().hasOnly(['uid', 'handle', 'displayName', 'bio', 'avatarUrl', 'isPublic', 'defaultCommentsOn', 'createdAt', 'deleted'])
+        && request.resource.data.keys().hasOnly(['uid', 'handle', 'displayName', 'bio', 'avatarUrl', 'isPublic', 'defaultCommentsOn', 'layout', 'createdAt', 'deleted'])
         && request.resource.data.uid == resource.data.uid
         && request.resource.data.createdAt == resource.data.createdAt
         && validDisplayName(request.resource.data.displayName)
@@ -98,20 +99,22 @@ service cloud.firestore {
     }
 
     // Favorite shelves: users/{uid}/shelves/{category}. Public to
-    // read, owner-only to write, hard-capped at five picks even if
-    // the client lies.
+    // read, owner-only to write, hard-capped at 100 items even if the
+    // client lies. The five media categories plus the mixed "watchlist"
+    // are the only valid shelves; the profile features the first few of
+    // each and reveals the rest behind "See all".
     match /users/{uid}/shelves/{category} {
       // Shelves inherit the profile's privacy.
       allow read: if isOwner(uid)
         || get(/databases/$(database)/documents/users/$(uid)).data.isPublic == true
         || isApprovedFollowerOf(uid);
       allow create, update: if isOwner(uid)
-        && category in ['movie', 'shows', 'music', 'game', 'book']
+        && category in ['movie', 'shows', 'music', 'game', 'book', 'watchlist']
         && request.resource.data.keys().hasOnly(['uid', 'category', 'picks'])
         && request.resource.data.uid == uid
         && request.resource.data.category == category
         && request.resource.data.picks is list
-        && request.resource.data.picks.size() <= 5;
+        && request.resource.data.picks.size() <= 100;
       allow delete: if isOwner(uid);
     }
 

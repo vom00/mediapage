@@ -4,6 +4,12 @@ import type { Timestamp } from "firebase/firestore";
 // across both TMDB TV and AniList.
 export type MediaCategory = "movie" | "shows" | "music" | "game" | "book";
 
+// How the shelves are arranged when viewing a profile. "stacked" is the
+// default scrolling column of full shelves; "grid" is the compact
+// one-page two-column view. This is a per-viewer display preference
+// (remembered in the browser), not a property of the profile itself.
+export type ProfileLayout = "stacked" | "grid";
+
 export type MediaSource =
   | "tmdb"
   | "anilist"
@@ -46,7 +52,7 @@ export interface UserProfile {
 export interface FavoriteShelf {
   uid: string;
   category: MediaCategory;
-  picks: MediaItem[]; // max length 5, ordered
+  picks: MediaItem[]; // ordered; the first five are featured on the profile
 }
 
 export interface Recommendation {

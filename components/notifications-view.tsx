@@ -15,15 +15,22 @@ import {
   type AppNotification,
 } from "@/lib/notifications";
 import { formatRelativeTime } from "@/lib/relative-time";
+import { useAvatarUrl } from "@/lib/use-avatar";
 
+// The follow-edge stamp omits data-URL avatars, so hydrate the actor's
+// picture from their live profile (falling back to initials if it is
+// private and unreadable).
 function Avatar({
+  actorUid,
   actor,
 }: {
+  actorUid: string;
   actor: AppNotification["actor"];
 }) {
+  const src = useAvatarUrl(actorUid, actor.avatarUrl);
   return (
     <UserAvatar
-      src={actor.avatarUrl}
+      src={src}
       name={actor.displayName}
       className="size-10 shrink-0 rounded-full border border-edge bg-surface-raised"
     />
@@ -118,7 +125,7 @@ export function NotificationsView() {
                   href={`/u/${req.actor.handle}`}
                   className="flex min-w-0 flex-1 items-center gap-3"
                 >
-                  <Avatar actor={req.actor} />
+                  <Avatar actorUid={req.actorUid} actor={req.actor} />
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-medium text-ink">
                       {req.actor.displayName}
@@ -171,7 +178,7 @@ export function NotificationsView() {
                   href={`/u/${f.actor.handle}`}
                   className="flex items-center gap-3 py-4 transition-colors duration-200 hover:bg-surface"
                 >
-                  <Avatar actor={f.actor} />
+                  <Avatar actorUid={f.actorUid} actor={f.actor} />
                   <span className="min-w-0 flex-1">
                     <span className="text-sm text-ink">
                       <span className="font-medium">{f.actor.displayName}</span>{" "}

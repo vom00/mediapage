@@ -6,6 +6,14 @@ const nextConfig: NextConfig = {
   // coexist with the developer preview on 3000.
   distDir: process.env.NEXT_DIST_DIR ?? ".next",
   images: {
+    // Serve cover art unoptimized: the browser loads each poster straight
+    // from its source CDN (TMDB, IGDB, Open Library, …) instead of routing
+    // through Next/Vercel Image Optimization. That keeps covers off
+    // Vercel's Hobby image-optimization quota — which, once exhausted,
+    // makes optimized remote images fail to load — and off Vercel
+    // bandwidth entirely. The sources already return CDN-sized thumbnails,
+    // so there is little to gain from re-optimizing them.
+    unoptimized: true,
     // The optimizer refuses loopback hosts by default. Development
     // and E2E load covers and avatars from local emulators/fixture
     // servers, so allow it outside production builds only.
