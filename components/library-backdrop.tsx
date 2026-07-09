@@ -1,4 +1,4 @@
-import { LibraryExplorer } from "@/components/library-explorer";
+import { LibraryExplorer, LibraryStrider } from "@/components/library-explorer";
 
 // The dark library hall: tiered rows of colored book spines, a
 // breathing light shaft, drifting dust, a 16-bit librarian browsing
@@ -28,6 +28,10 @@ export function LibraryBackdrop() {
       {MOTES.map((mote, i) => (
         <span key={i} className="mote" style={mote} />
       ))}
+      {/* Rendered before the vignette so it dims this one figure into a
+          hazy background silhouette, distinct from the foreground cast
+          LibraryExplorer renders after the vignette. */}
+      <LibraryStrider />
       <div className="library-vignette" />
       <LibraryExplorer />
     </div>
