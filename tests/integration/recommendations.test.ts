@@ -277,4 +277,22 @@ describe("recommendations and comments", () => {
       deleteRecommendation(bob.db, recIdB),
     ).rejects.toThrow(DENIED);
   });
+
+  test("deleting a recommendation takes its comments with it", async () => {
+    const recId = await postRecommendation(
+      alice.db,
+      aliceAuthor,
+      ITEM,
+      "Note",
+      true,
+    );
+    await addComment(bob.db, bobAuthor, recId, "First!");
+    await addComment(alice.db, aliceAuthor, recId, "Thanks");
+    expect(await fetchComments(alice.db, recId)).toHaveLength(2);
+
+    await deleteRecommendation(alice.db, recId);
+
+    // The comments are gone, not orphaned under the dead parent.
+    expect(await fetchComments(alice.db, recId)).toHaveLength(0);
+  });
 });

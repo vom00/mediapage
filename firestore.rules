@@ -15,7 +15,15 @@ service cloud.firestore {
     }
 
     function validHandle(handle) {
-      return handle is string && handle.matches('^[a-z][a-z0-9_]{2,19}$');
+      return handle is string
+        && handle.matches('^[a-z][a-z0-9_]{2,19}$')
+        // Route names and product words that can never be claimed,
+        // mirrored from RESERVED in lib/handles.ts — the client checks
+        // this for friendly errors, but only here is it enforced.
+        && !(handle in ['api', 'about', 'admin', 'feed', 'help', 'home',
+          'library', 'login', 'logout', 'mediapage', 'notifications',
+          'onboarding', 'people', 'privacy', 'search', 'settings',
+          'signup', 'support', 'terms', 'u', 'user', 'users']);
     }
 
     function validDisplayName(name) {
@@ -156,7 +164,32 @@ service cloud.firestore {
     // (approved=false) that grants no access until the *owner* flips it
     // to approved. The follower can never self-approve.
     match /follows/{edgeId} {
-      allow read: if true;
+      // Approved edges are public: follower lists and counts are a
+      // public surface, like the profiles they hang off. A *pending*
+      // request is different — it is between the two people involved,
+      // so only the requester and the owner can see it. (Queries must
+      // therefore either filter approved == true or scope themselves
+      // to the signed-in user's own uid.)
+      //
+      // Missing edges: the id is `${followerUid}_${followedUid}`, so
+      // either party may probe their own (possibly absent) edge — the
+      // follow button does this constantly. Anyone else is denied for
+      // missing and pending alike; if a stranger got "not found" for
+      // absent edges but "denied" for pending ones, the difference
+      // would leak exactly what this rule hides. (Auth uids never
+      // contain '_' or regex metacharacters, so the matches below are
+      // exact prefix/suffix tests.)
+      allow read: if (resource != null && (
+          resource.data.approved == true
+          || (signedIn() && (
+            request.auth.uid == resource.data.followerUid
+            || request.auth.uid == resource.data.followedUid
+          ))
+        ))
+        || (resource == null && signedIn() && (
+          edgeId.matches(request.auth.uid + '_.*')
+          || edgeId.matches('.*_' + request.auth.uid)
+        ));
       allow create: if signedIn()
         && request.resource.data.keys().hasOnly(['followerUid', 'followedUid', 'requester', 'approved', 'createdAt'])
         && request.resource.data.followerUid == request.auth.uid
@@ -209,6 +242,31 @@ service cloud.firestore {
         && a.displayName == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.displayName;
     }
 
+    // A stored media item must look like what the search API returns:
+    // known keys only, bounded sizes, and http(s) (or app-relative)
+    // URLs — so a hand-rolled write can't smuggle megabytes of junk, a
+    // tracking pixel, or a javascript: link into every viewer's browser.
+    // (matches() is a full-string match in rules.)
+    function validMediaItem(item) {
+      return item is map
+        && item.keys().hasOnly(['id', 'source', 'sourceId', 'category', 'title',
+          'subtitle', 'year', 'imageUrl', 'synopsis', 'genres', 'sourceUrl'])
+        && item.id is string && item.id.size() >= 1 && item.id.size() <= 130
+        && item.source is string && item.source.size() <= 30
+        && item.sourceId is string && item.sourceId.size() <= 100
+        && item.category in ['movie', 'shows', 'music', 'game', 'book']
+        && item.title is string && item.title.size() >= 1 && item.title.size() <= 500
+        && item.imageUrl is string && item.imageUrl.size() <= 2000
+        && item.imageUrl.matches('(https?://|/).+')
+        && (!('subtitle' in item) || (item.subtitle is string && item.subtitle.size() <= 500))
+        && (!('year' in item) || item.year is number)
+        && (!('synopsis' in item) || (item.synopsis is string && item.synopsis.size() <= 5000))
+        && (!('genres' in item) || (item.genres is list && item.genres.size() <= 20))
+        && (!('sourceUrl' in item) || (item.sourceUrl is string
+          && item.sourceUrl.size() <= 2000
+          && item.sourceUrl.matches('https?://.+')));
+    }
+
     // Recommendations are intentionally world-readable, by product
     // decision, even for authors with a followers-only profile: posting
     // a recommendation is a public act and the UI warns about this when
@@ -222,10 +280,7 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['uid', 'author', 'item', 'note', 'commentsEnabled', 'createdAt'])
         && validAuthorStamp(request.resource.data.author)
         && authorIsSelf(request.resource.data.author)
-        && request.resource.data.item is map
-        && request.resource.data.item.id is string
-        && request.resource.data.item.title is string
-        && request.resource.data.item.imageUrl is string
+        && validMediaItem(request.resource.data.item)
         && request.resource.data.note is string
         && request.resource.data.note.size() >= 1
         && request.resource.data.note.size() <= 500

@@ -37,6 +37,7 @@ export function SettingsForm({ profile }: { profile: UserProfile }) {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [deactivateError, setDeactivateError] = useState<string | null>(null);
   const confirmRef = useRef<HTMLDialogElement>(null);
 
   function handleAvatarChange(event: React.ChangeEvent<HTMLInputElement>) {
@@ -92,7 +93,13 @@ export function SettingsForm({ profile }: { profile: UserProfile }) {
   }
 
   async function handleDeactivate() {
-    await setAccountDeleted(db, profile.uid, true);
+    setDeactivateError(null);
+    try {
+      await setAccountDeleted(db, profile.uid, true);
+    } catch {
+      setDeactivateError("Deactivation didn't go through. Try again.");
+      return;
+    }
     confirmRef.current?.close();
     await signOut(auth);
     router.push("/");
@@ -275,6 +282,11 @@ export function SettingsForm({ profile }: { profile: UserProfile }) {
             Your profile, shelves, and recommendations are hidden, not
             deleted. Logging back in lets you reactivate.
           </p>
+          {deactivateError ? (
+            <p role="alert" className="mt-3 border-l-2 border-glow pl-3 text-sm">
+              {deactivateError}
+            </p>
+          ) : null}
           <div className="mt-6 flex gap-3">
             <button
               type="button"

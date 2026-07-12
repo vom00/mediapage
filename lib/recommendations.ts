@@ -4,19 +4,30 @@ import {
   deleteDoc,
   doc,
   getDocs,
+  limit,
   orderBy,
   query,
   serverTimestamp,
   updateDoc,
   where,
+  writeBatch,
   type Firestore,
   type Timestamp,
 } from "firebase/firestore";
+import { chunk } from "@/lib/chunk";
 import { sanitizeMediaItem } from "@/lib/shelves";
 import type { MediaItem } from "@/lib/types";
 
 export const NOTE_MAX = 500;
 export const COMMENT_MAX = 500;
+
+// How many of a profile's recommendations any view loads. Nobody
+// scrolls past this, and it keeps a prolific profile from becoming an
+// unbounded read.
+export const PROFILE_REC_LIMIT = 100;
+
+// Firestore batches allow 500 writes; stay comfortably under.
+const DELETE_BATCH = 400;
 
 // Denormalized author identity stamped onto posts and comments so
 // feeds render without N extra profile reads.
@@ -95,10 +106,25 @@ export async function setRecommendationComments(
   });
 }
 
+// Deletes the recommendation *and* its comments: Firestore never
+// cascades subcollection deletes, so without this the comments would
+// linger world-readable under the dead document forever. Comments go
+// first — the moderation rule that lets the author delete them checks
+// the parent doc, which must still exist at that point.
 export async function deleteRecommendation(
   db: Firestore,
   recommendationId: string,
 ): Promise<void> {
+  const comments = await getDocs(
+    collection(db, "recommendations", recommendationId, "comments"),
+  );
+  for (const group of chunk(comments.docs, DELETE_BATCH)) {
+    const batch = writeBatch(db);
+    for (const comment of group) {
+      batch.delete(comment.ref);
+    }
+    await batch.commit();
+  }
   await deleteDoc(doc(db, "recommendations", recommendationId));
 }
 
@@ -111,6 +137,7 @@ export async function fetchRecommendationsByUser(
       collection(db, "recommendations"),
       where("uid", "==", uid),
       orderBy("createdAt", "desc"),
+      limit(PROFILE_REC_LIMIT),
     ),
   );
   return snap.docs.map(

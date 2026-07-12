@@ -9,13 +9,17 @@ import { setAccountDeleted } from "@/lib/settings";
 export function DeactivatedNotice() {
   const { user } = useAuth();
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function reactivate() {
     if (!user) return;
+    setError(null);
     setBusy(true);
     try {
       await setAccountDeleted(db, user.uid, false);
       // The profile snapshot updates and HomeView swaps to the feed.
+    } catch {
+      setError("Reactivation didn't go through. Try again in a moment.");
     } finally {
       setBusy(false);
     }
@@ -38,6 +42,11 @@ export function DeactivatedNotice() {
       >
         Reactivate my account
       </button>
+      {error ? (
+        <p role="alert" className="mt-4 border-l-2 border-glow pl-3 text-sm">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

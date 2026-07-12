@@ -2,6 +2,7 @@
 
 import {
   collection,
+  limit,
   onSnapshot,
   orderBy,
   query,
@@ -12,7 +13,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { RecommendationCard } from "@/components/recommendation-card";
 import { db } from "@/lib/firebase/client";
-import type { RecommendationDoc } from "@/lib/recommendations";
+import { PROFILE_REC_LIMIT, type RecommendationDoc } from "@/lib/recommendations";
 
 export function RecommendationsSection({ uid }: { uid: string }) {
   const { user } = useAuth();
@@ -25,6 +26,7 @@ export function RecommendationsSection({ uid }: { uid: string }) {
         collection(db, "recommendations"),
         where("uid", "==", uid),
         orderBy("createdAt", "desc"),
+        limit(PROFILE_REC_LIMIT),
       ),
       (snap) => {
         setRecs(
@@ -33,6 +35,9 @@ export function RecommendationsSection({ uid }: { uid: string }) {
           ),
         );
       },
+      // On a denied/failed subscription, show the empty state rather
+      // than a skeleton forever.
+      () => setRecs([]),
     );
   }, [uid]);
 

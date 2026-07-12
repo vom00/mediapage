@@ -24,6 +24,7 @@ export function FollowButton({
   const { user, profile, status } = useAuth();
   const [state, setState] = useState<EdgeState>("loading");
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -33,6 +34,7 @@ export function FollowButton({
         if (!snap.exists()) setState("none");
         else setState(snap.data().approved ? "following" : "pending");
       },
+      () => setState("none"),
     );
   }, [user, targetUid]);
 
@@ -45,6 +47,7 @@ export function FollowButton({
 
   async function toggle() {
     if (!user || !profile) return;
+    setError(null);
     setBusy(true);
     try {
       if (state === "none") {
@@ -64,6 +67,10 @@ export function FollowButton({
         await unfollow(db, user.uid, targetUid);
       }
       onChanged?.();
+    } catch {
+      // Most likely a rules denial from stale state (e.g. the target
+      // flipped their privacy since the page loaded).
+      setError("That didn't go through. Reload and try again.");
     } finally {
       setBusy(false);
     }
@@ -93,14 +100,21 @@ export function FollowButton({
         }`;
 
   return (
-    <button
-      type="button"
-      onClick={() => void toggle()}
-      disabled={busy}
-      aria-pressed={active}
-      className={className}
-    >
-      {label}
-    </button>
+    <div className="flex flex-col items-start gap-2">
+      <button
+        type="button"
+        onClick={() => void toggle()}
+        disabled={busy}
+        aria-pressed={active}
+        className={className}
+      >
+        {label}
+      </button>
+      {error ? (
+        <p role="alert" className="border-l-2 border-glow pl-2 text-xs text-ink-muted">
+          {error}
+        </p>
+      ) : null}
+    </div>
   );
 }

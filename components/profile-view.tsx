@@ -52,10 +52,13 @@ export function ProfileView({ handle }: { handle: string }) {
   });
 
   const loadCounts = useCallback(async (uid: string) => {
+    // Approved edges only: pending requests are not followers, and
+    // they are readable only by their two parties anyway.
     const follows = collection(db, "follows");
+    const approved = where("approved", "==", true);
     const [followers, following] = await Promise.all([
-      getCountFromServer(query(follows, where("followedUid", "==", uid))),
-      getCountFromServer(query(follows, where("followerUid", "==", uid))),
+      getCountFromServer(query(follows, where("followedUid", "==", uid), approved)),
+      getCountFromServer(query(follows, where("followerUid", "==", uid), approved)),
     ]);
     setCounts({
       followers: followers.data().count,

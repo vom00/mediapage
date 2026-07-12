@@ -6,7 +6,9 @@
 export const HANDLE_MIN = 3;
 export const HANDLE_MAX = 20;
 
-// Route names and product words that can never be claimed.
+// Route names and product words that can never be claimed. Mirrored
+// in firestore.rules (validHandle), where it is actually enforced —
+// keep the two lists in sync.
 const RESERVED = new Set([
   "api",
   "about",
@@ -18,7 +20,9 @@ const RESERVED = new Set([
   "login",
   "logout",
   "mediapage",
+  "notifications",
   "onboarding",
+  "people",
   "privacy",
   "search",
   "settings",

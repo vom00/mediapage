@@ -3,6 +3,7 @@
 import {
   collection,
   doc,
+  limit,
   onSnapshot,
   orderBy,
   query,
@@ -14,7 +15,7 @@ import { useEffect, useState } from "react";
 import { CoverImage } from "@/components/cover-image";
 import { CATEGORY_LABELS, CATEGORY_ORDER } from "@/lib/categories";
 import { db } from "@/lib/firebase/client";
-import type { RecommendationDoc } from "@/lib/recommendations";
+import { PROFILE_REC_LIMIT, type RecommendationDoc } from "@/lib/recommendations";
 import { PIECE_ASPECT } from "@/lib/shelf-piece";
 import { SHELF_PREVIEW_COUNT, WATCHLIST, type ShelfKey } from "@/lib/shelves";
 import type { MediaItem } from "@/lib/types";
@@ -26,21 +27,27 @@ import type { MediaItem } from "@/lib/types";
 
 // Each shelf shows the same featured count as the stacked layout (5);
 // a "+N" tile then expands the shelf in place to reveal the rest, with
-// a "Show less" to collapse it again. Recommendations are not capped —
-// the column simply grows downward.
+// a "Show less" to collapse it again. Recommendations grow downward,
+// capped at the shared PROFILE_REC_LIMIT.
 
 // Each compact shelf self-subscribes to its one shelf doc, mirroring how
 // the stacked ShelfRow works (a category is one component, one listener).
 function useShelf(uid: string, shelfKey: ShelfKey): MediaItem[] {
   const [picks, setPicks] = useState<MediaItem[]>([]);
   useEffect(() => {
-    return onSnapshot(doc(db, "users", uid, "shelves", shelfKey), (snap) => {
-      setPicks(
-        snap.exists()
-          ? ((snap.data() as { picks?: MediaItem[] }).picks ?? [])
-          : [],
-      );
-    });
+    return onSnapshot(
+      doc(db, "users", uid, "shelves", shelfKey),
+      (snap) => {
+        setPicks(
+          snap.exists()
+            ? ((snap.data() as { picks?: MediaItem[] }).picks ?? [])
+            : [],
+        );
+      },
+      // Access revoked mid-view (e.g. the owner went followers-only):
+      // clear rather than keep showing shelves we can no longer read.
+      () => setPicks([]),
+    );
   }, [uid, shelfKey]);
   return picks;
 }
@@ -177,12 +184,14 @@ function CompactRecommendations({
         collection(db, "recommendations"),
         where("uid", "==", uid),
         orderBy("createdAt", "desc"),
+        limit(PROFILE_REC_LIMIT),
       ),
       (snap) => {
         setRecs(
           snap.docs.map((d) => ({ id: d.id, ...d.data() }) as RecommendationDoc),
         );
       },
+      () => setRecs([]),
     );
   }, [uid]);
 

@@ -4,6 +4,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  limit,
   orderBy,
   query,
   serverTimestamp,
@@ -208,7 +209,9 @@ export async function fetchFollowedUids(
 }
 
 // Recent recommendations from the people someone follows, merged
-// newest first across the 30-uid query windows.
+// newest first across the 30-uid query windows. Each window is capped
+// at maxItems — the merge can never need more than that from any one
+// window — so a prolific followee can't make the feed read unbounded.
 export async function fetchFeed(
   db: Firestore,
   followedUids: string[],
@@ -223,6 +226,7 @@ export async function fetchFeed(
           collection(db, "recommendations"),
           where("uid", "in", group),
           orderBy("createdAt", "desc"),
+          limit(maxItems),
         ),
       ),
     ),

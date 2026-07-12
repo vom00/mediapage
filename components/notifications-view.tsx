@@ -49,6 +49,7 @@ export function NotificationsView() {
   // visit seen — drives the "New" highlight.
   const [prevSeenAt, setPrevSeenAt] = useState<Timestamp | null>(null);
   const [busyUid, setBusyUid] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const initialized = useRef(false);
 
   useEffect(() => {
@@ -70,6 +71,7 @@ export function NotificationsView() {
 
   async function respond(actorUid: string, approve: boolean) {
     if (!user) return;
+    setError(null);
     setBusyUid(actorUid);
     try {
       if (approve) {
@@ -77,6 +79,8 @@ export function NotificationsView() {
       } else {
         await declineFollowRequest(db, actorUid, user.uid);
       }
+    } catch {
+      setError("That didn't go through. Try again in a moment.");
     } finally {
       setBusyUid(null);
     }
@@ -107,6 +111,11 @@ export function NotificationsView() {
 
   return (
     <div className="flex flex-col gap-10">
+      {error ? (
+        <p role="alert" className="border-l-2 border-glow pl-3 text-sm">
+          {error}
+        </p>
+      ) : null}
       {requests.length > 0 ? (
         <section aria-labelledby="requests-heading">
           <h2

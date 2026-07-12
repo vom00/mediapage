@@ -3,7 +3,7 @@
 import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
 import { MessageSquare, MessageSquareOff, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Avatar } from "@/components/avatar";
 import { useAuth } from "@/components/auth-provider";
 import { CoverImage } from "@/components/cover-image";
@@ -51,6 +51,9 @@ export function RecommendationCard({ rec }: { rec: RecommendationDoc }) {
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const confirmRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
     if (!rec.commentsEnabled) return;
@@ -64,8 +67,32 @@ export function RecommendationCard({ rec }: { rec: RecommendationDoc }) {
           snap.docs.map((d) => ({ id: d.id, ...d.data() }) as CommentDoc),
         );
       },
+      () => setComments([]),
     );
   }, [rec.id, rec.commentsEnabled]);
+
+  async function handleToggleComments() {
+    setActionError(null);
+    try {
+      await setRecommendationComments(db, rec.id, !rec.commentsEnabled);
+    } catch {
+      setActionError("That didn't save. Try again in a moment.");
+    }
+  }
+
+  async function handleDelete() {
+    setActionError(null);
+    setDeleting(true);
+    try {
+      await deleteRecommendation(db, rec.id);
+      confirmRef.current?.close();
+    } catch {
+      setActionError("Deleting didn't go through. Try again in a moment.");
+      confirmRef.current?.close();
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   async function handleComment(event: React.FormEvent) {
     event.preventDefault();
@@ -133,9 +160,7 @@ export function RecommendationCard({ rec }: { rec: RecommendationDoc }) {
               title={
                 rec.commentsEnabled ? "Turn comments off" : "Turn comments on"
               }
-              onClick={() =>
-                void setRecommendationComments(db, rec.id, !rec.commentsEnabled)
-              }
+              onClick={() => void handleToggleComments()}
             >
               {rec.commentsEnabled ? (
                 <MessageSquareOff aria-hidden="true" className="size-4" />
@@ -147,13 +172,52 @@ export function RecommendationCard({ rec }: { rec: RecommendationDoc }) {
               type="button"
               className={iconButtonClass}
               aria-label={`Delete recommendation of ${rec.item.title}`}
-              onClick={() => void deleteRecommendation(db, rec.id)}
+              onClick={() => confirmRef.current?.showModal()}
             >
               <Trash2 aria-hidden="true" className="size-4" />
             </button>
+            <dialog
+              ref={confirmRef}
+              aria-labelledby={`confirm-delete-${rec.id}`}
+              className="m-auto w-[min(92vw,24rem)] border border-edge bg-surface-raised p-6 text-ink backdrop:bg-bg/70 backdrop:backdrop-blur-sm"
+            >
+              <h4
+                id={`confirm-delete-${rec.id}`}
+                className="font-display text-xl tracking-tight"
+              >
+                Delete this recommendation?
+              </h4>
+              <p className="mt-2 text-sm text-ink-muted">
+                {rec.item.title} comes off your page, along with its
+                comments. This can&rsquo;t be undone.
+              </p>
+              <div className="mt-5 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => void handleDelete()}
+                  disabled={deleting}
+                  className="flex min-h-11 items-center border border-glow bg-ink px-5 text-sm font-medium text-bg transition-opacity duration-200 hover:opacity-90 disabled:opacity-50"
+                >
+                  Yes, delete
+                </button>
+                <button
+                  type="button"
+                  onClick={() => confirmRef.current?.close()}
+                  className="flex min-h-11 items-center border border-edge px-5 text-sm text-ink-muted transition-colors duration-200 hover:border-glow hover:text-ink"
+                >
+                  Cancel
+                </button>
+              </div>
+            </dialog>
           </div>
         ) : null}
       </div>
+
+      {actionError ? (
+        <p role="alert" className="mt-4 border-l-2 border-glow pl-3 text-sm">
+          {actionError}
+        </p>
+      ) : null}
 
       {rec.commentsEnabled ? (
         <div className="mt-5 border-t border-edge pt-4">

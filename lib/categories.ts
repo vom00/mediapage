@@ -1,6 +1,7 @@
 import type { MediaCategory, MediaSource } from "@/lib/types";
 
-// Display names for the six shelves, in canonical order.
+// Display names for the five media shelves, in canonical order.
+// (The sixth shelf, the watchlist, is defined in lib/shelves.ts.)
 export const CATEGORY_LABELS: Record<MediaCategory, string> = {
   movie: "Movies",
   shows: "Shows",

@@ -47,11 +47,17 @@ export function ShelfRow({
   const caseRef = useShelfMotion(picks.map((p) => p.id).join("|"));
 
   useEffect(() => {
-    return onSnapshot(doc(db, "users", uid, "shelves", shelfKey), (snap) => {
-      setPicks(
-        snap.exists() ? ((snap.data() as { picks?: MediaItem[] }).picks ?? []) : [],
-      );
-    });
+    return onSnapshot(
+      doc(db, "users", uid, "shelves", shelfKey),
+      (snap) => {
+        setPicks(
+          snap.exists() ? ((snap.data() as { picks?: MediaItem[] }).picks ?? []) : [],
+        );
+      },
+      // Access revoked mid-view (e.g. the owner went followers-only):
+      // clear rather than keep showing shelves we can no longer read.
+      () => setPicks([]),
+    );
   }, [uid, shelfKey]);
 
   async function persist(next: MediaItem[]) {

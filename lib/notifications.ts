@@ -67,13 +67,18 @@ export async function fetchNotifications(
 }
 
 // Live subscription used by the nav bell and the notifications page.
+// A failed subscription (e.g. signed out mid-session) reports an empty
+// inbox rather than wedging the caller on its last state.
 export function watchNotifications(
   db: Firestore,
   ownerUid: string,
   cb: (notifications: AppNotification[]) => void,
 ): Unsubscribe {
-  return onSnapshot(incomingFollowsQuery(db, ownerUid), (snap) =>
-    cb(newestFirst(snap.docs.map((d) => toNotification(d.data() as IncomingEdge)))),
+  return onSnapshot(
+    incomingFollowsQuery(db, ownerUid),
+    (snap) =>
+      cb(newestFirst(snap.docs.map((d) => toNotification(d.data() as IncomingEdge)))),
+    () => cb([]),
   );
 }
 
@@ -102,8 +107,10 @@ export function watchNotificationsSeenAt(
   ownerUid: string,
   cb: (seenAt: Timestamp | null) => void,
 ): Unsubscribe {
-  return onSnapshot(seenRef(db, ownerUid), (snap) =>
-    cb(snap.exists() ? readSeenAt(snap.data()) : null),
+  return onSnapshot(
+    seenRef(db, ownerUid),
+    (snap) => cb(snap.exists() ? readSeenAt(snap.data()) : null),
+    () => cb(null),
   );
 }
 

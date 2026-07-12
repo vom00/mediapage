@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { RecommendationCard } from "@/components/recommendation-card";
 import { db } from "@/lib/firebase/client";
-import { fetchFeed, fetchFollowedUids } from "@/lib/follows";
+import { fetchFeed, fetchFollowing } from "@/lib/follows";
 import type { RecommendationDoc } from "@/lib/recommendations";
 
 export function HomeFeed() {
@@ -16,8 +16,14 @@ export function HomeFeed() {
     if (!user) return;
     let cancelled = false;
     async function load() {
-      const followed = await fetchFollowedUids(db, user!.uid);
-      const items = await fetchFeed(db, followed);
+      // Hydrated profiles rather than raw edge uids: deactivated
+      // accounts drop out here, so their recommendations stay hidden
+      // from feeds, as the deactivation screen promises.
+      const followed = await fetchFollowing(db, user!.uid);
+      const items = await fetchFeed(
+        db,
+        followed.map((p) => p.uid),
+      );
       if (!cancelled) setFeed(items);
     }
     void load();
