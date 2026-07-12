@@ -29,6 +29,8 @@ type Bay = {
   flameLeft: Flame;
   flameRight: Flame;
   float: { duration: string; delay: string };
+  // How deep in shadow the bay starts (0 lit — 0.88 swallowed); the
+  // camera script lifts it as the bay approaches.
   veil: number;
   art: React.ReactNode;
 };
@@ -231,7 +233,6 @@ export function Landing() {
   const hintRef = useRef<HTMLDivElement>(null);
   const skipRef = useRef<HTMLDivElement>(null);
   const bayRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const veilRefs = useRef<(HTMLDivElement | null)[]>([]);
   const artRefs = useRef<(HTMLDivElement | null)[]>([]);
   const dotRefs = useRef<(HTMLSpanElement | null)[]>([]);
 
@@ -294,16 +295,20 @@ export function Landing() {
       for (let i = 0; i < BAYS.length; i++) {
         const d = BAY_DEPTHS[i] + camZ; // 0 = at camera; negative = ahead
         const bay = bayRefs.current[i];
-        const veil = veilRefs.current[i];
         const art = artRefs.current[i];
         const dot = dotRefs.current[i];
         if (bay) {
-          // Bays fade once they pass behind the camera.
+          // Distant bays sit in shadow and passed bays fade out. Both
+          // fold into the bay's own opacity (the corridor behind is
+          // near-black, so dimming reads the same as a dark overlay) —
+          // a full-screen veil layer per bay is GPU weight we can't
+          // afford. Bays that are effectively invisible get
+          // visibility: hidden so the compositor skips them entirely.
           const base = d > 260 ? clamp(1 - (d - 260) / 240, 0, 1) : 1;
-          bay.style.opacity = (base * (1 - finaleT)).toFixed(3);
-        }
-        if (veil) {
-          veil.style.opacity = clamp((-d - 350) / 2400, 0, 0.88).toFixed(3);
+          const dark = clamp((-d - 350) / 2400, 0, 0.88);
+          const o = base * (1 - dark) * (1 - finaleT);
+          bay.style.opacity = o.toFixed(3);
+          bay.style.visibility = o < 0.015 ? "hidden" : "visible";
         }
         const lit = Math.abs(d + 120) < 480;
         if (dot) {
@@ -320,7 +325,8 @@ export function Landing() {
       }
     };
 
-    const tick = () => {
+    let lastT = 0;
+    const tick = (now: number) => {
       measure();
       const delta = target - cur;
       if (Math.abs(delta) < 0.0002) {
@@ -331,10 +337,17 @@ export function Landing() {
         cur = target;
         render();
         running = false;
+        lastT = 0;
         return;
       }
-      // Damped follow: the camera glides after the scrollbar.
-      cur += delta * 0.09;
+      // Damped follow: the camera glides after the scrollbar. Time-
+      // based (not per-frame) so the glide keeps the same feel at any
+      // refresh rate — per-frame damping falls visibly behind the
+      // scrollbar the moment a machine drops frames, which reads as
+      // lag even when nothing is stuttering.
+      const dt = lastT ? Math.min(64, now - lastT) : 16.7;
+      lastT = now;
+      cur += delta * (1 - Math.exp(-dt / 140));
       render();
       raf = requestAnimationFrame(tick);
     };
@@ -379,9 +392,7 @@ export function Landing() {
           >
             <div className="dolly-floor" />
             <div className="dolly-ceiling" />
-            <div className="dolly-hearth">
-              <div className="dolly-hearth-glow" />
-            </div>
+            <div className="dolly-hearth" />
 
             {BAYS.map((bay, i) => (
               <div
@@ -390,7 +401,10 @@ export function Landing() {
                   bayRefs.current[i] = el;
                 }}
                 className="absolute inset-0"
-                style={{ transform: `translateZ(${BAY_DEPTHS[i]}px)` }}
+                style={{
+                  transform: `translateZ(${BAY_DEPTHS[i]}px)`,
+                  opacity: 1 - bay.veil,
+                }}
               >
                 <BayWall side="left" spines={bay.spinesLeft} flame={bay.flameLeft} />
                 <BayWall side="right" spines={bay.spinesRight} flame={bay.flameRight} />
@@ -429,13 +443,6 @@ export function Landing() {
                     </span>
                   </div>
                 </div>
-                <div
-                  ref={(el) => {
-                    veilRefs.current[i] = el;
-                  }}
-                  className="dolly-veil"
-                  style={{ opacity: bay.veil }}
-                />
               </div>
             ))}
           </div>

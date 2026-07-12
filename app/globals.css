@@ -1521,12 +1521,14 @@ dialog[open]::backdrop {
   will-change: transform;
 }
 
-/* Floor: warm plank run receding into the dark. */
+/* Floor: warm plank run receding into the dark. The side overhang
+   only needs to cover the camera's ±14px sway — every extra vw here
+   is GPU texture on the two largest planes in the scene. */
 .dolly-floor {
   position: absolute;
   bottom: -2px;
-  left: -40vw;
-  right: -40vw;
+  left: -12vw;
+  right: -12vw;
   height: 5200px;
   transform-origin: 50% 100%;
   transform: rotateX(90deg);
@@ -1550,8 +1552,8 @@ dialog[open]::backdrop {
 .dolly-ceiling {
   position: absolute;
   top: -2px;
-  left: -40vw;
-  right: -40vw;
+  left: -12vw;
+  right: -12vw;
   height: 5200px;
   transform-origin: 50% 0%;
   transform: rotateX(-90deg);
@@ -1562,22 +1564,18 @@ dialog[open]::backdrop {
 }
 
 /* End of the corridor: hearth-light. */
+/* The glow is its own plane — no full-viewport wrapper layer around
+   it. No filter: blur() anywhere in the scene — a large blur surface
+   gets re-evaluated every frame the world transform changes, which is
+   the difference between a smooth walk and a slideshow. The gradients
+   carry their own softness instead. */
 .dolly-hearth {
   position: absolute;
-  inset: 0;
-  transform: translateZ(-5300px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* No filter: blur() anywhere in the scene — a large blur surface gets
-   re-evaluated every frame the world transform changes, which is the
-   difference between a smooth walk and a slideshow. The gradients
-   carry their own softness instead. */
-.dolly-hearth-glow {
+  left: 50%;
+  top: 50%;
   width: 70vw;
   height: 70vh;
+  transform: translate(-50%, -50%) translateZ(-5300px);
   border-radius: 50%;
   background: radial-gradient(
     closest-side,
@@ -1635,16 +1633,19 @@ dialog[open]::backdrop {
 
 /* A bay's framed pixel artifact + label. Opacity is driven by the
    camera script; hidden in the static frame so the hero stays alone
-   on screen. */
+   on screen. Sized to its content (not the viewport) so each art
+   block stays a small compositor layer. */
 .dolly-art {
   position: absolute;
-  inset: 0;
+  left: 50%;
+  top: 50%;
+  width: max-content;
+  max-width: 92vw;
+  transform: translate(-50%, calc(-50% + 4vh));
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   gap: 26px;
-  padding-top: 8vh;
   opacity: 0;
 }
 
@@ -1667,15 +1668,6 @@ dialog[open]::backdrop {
   display: block;
   width: clamp(120px, 14vw, 210px);
   height: auto;
-}
-
-/* Darkness veil over a distant bay; the camera script thins it as the
-   bay approaches. */
-.dolly-veil {
-  position: absolute;
-  inset: -12%;
-  background: var(--bg);
-  pointer-events: none;
 }
 
 /* Light shafts + dust motes, fixed to the camera. Motes only exist
