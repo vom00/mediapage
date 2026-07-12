@@ -1501,6 +1501,9 @@ dialog[open]::backdrop {
   top: 0;
   height: 100svh;
   overflow: hidden;
+  /* The scene invalidates every frame while the camera moves; keep
+     that churn from leaking into the rest of the page. */
+  contain: layout style paint;
   perspective: 1100px;
   perspective-origin: 50% 46%;
   background: radial-gradient(
@@ -1568,17 +1571,21 @@ dialog[open]::backdrop {
   justify-content: center;
 }
 
+/* No filter: blur() anywhere in the scene — a large blur surface gets
+   re-evaluated every frame the world transform changes, which is the
+   difference between a smooth walk and a slideshow. The gradients
+   carry their own softness instead. */
 .dolly-hearth-glow {
   width: 70vw;
   height: 70vh;
   border-radius: 50%;
   background: radial-gradient(
     closest-side,
-    rgb(240 200 130 / 0.5),
-    rgb(240 200 130 / 0.12) 45%,
-    rgb(240 200 130 / 0) 72%
+    rgb(240 200 130 / 0.42),
+    rgb(240 200 130 / 0.16) 38%,
+    rgb(240 200 130 / 0.05) 62%,
+    rgb(240 200 130 / 0) 88%
   );
-  filter: blur(30px);
 }
 
 /* A shelf wall: spine bands (per-bay, via --spines), shelf lines every
@@ -1676,10 +1683,12 @@ dialog[open]::backdrop {
 .dolly-shaft {
   position: absolute;
   opacity: 0.4;
-  background: linear-gradient(
-    to bottom,
-    rgb(240 210 150 / 0.09),
-    rgb(240 210 150 / 0) 70%
+  /* An elliptical falloff keeps the beam's edges soft without blur. */
+  background: radial-gradient(
+    ellipse 55% 60% at 50% 10%,
+    rgb(240 210 150 / 0.1),
+    rgb(240 210 150 / 0.04) 45%,
+    rgb(240 210 150 / 0) 75%
   );
 }
 
@@ -1689,7 +1698,6 @@ dialog[open]::backdrop {
   height: 3px;
   border-radius: 50%;
   background: rgb(240 220 174 / 0.5);
-  filter: blur(0.5px);
   opacity: 0;
 }
 
@@ -1736,11 +1744,11 @@ dialog[open]::backdrop {
   border-radius: 50%;
   background: radial-gradient(
     closest-side,
-    rgb(240 200 130 / 0.28),
-    rgb(240 200 130 / 0.08) 48%,
-    rgb(240 200 130 / 0) 72%
+    rgb(240 200 130 / 0.24),
+    rgb(240 200 130 / 0.1) 42%,
+    rgb(240 200 130 / 0.03) 64%,
+    rgb(240 200 130 / 0) 88%
   );
-  filter: blur(24px);
   pointer-events: none;
 }
 

@@ -247,6 +247,7 @@ export function Landing() {
     let target = 0;
     let cur = 0;
     let raf = 0;
+    let running = false;
 
     const measure = () => {
       const rect = track.getBoundingClientRect();
@@ -254,11 +255,7 @@ export function Landing() {
       target = usable > 0 ? clamp(-rect.top / usable, 0, 1) : 0;
     };
 
-    const tick = () => {
-      // Recompute every frame so any scroll container works.
-      measure();
-      // Damped follow: the camera glides after the scrollbar.
-      cur += (target - cur) * 0.09;
+    const render = () => {
       const camZ = cur * CAMERA_END;
       const sway = Math.sin(cur * Math.PI * 2.5) * 14; // handheld drift
 
@@ -321,16 +318,40 @@ export function Landing() {
           art.style.opacity = (gate * (0.1 + 0.9 * k) * (1 - finaleT)).toFixed(3);
         }
       }
+    };
+
+    const tick = () => {
+      measure();
+      const delta = target - cur;
+      if (Math.abs(delta) < 0.0002) {
+        // Settled: paint the exact final frame and go idle. No JS
+        // runs again until the next scroll or resize wakes the loop —
+        // an always-on RAF writing two dozen styles per frame is what
+        // makes an idle page feel heavy.
+        cur = target;
+        render();
+        running = false;
+        return;
+      }
+      // Damped follow: the camera glides after the scrollbar.
+      cur += delta * 0.09;
+      render();
       raf = requestAnimationFrame(tick);
     };
 
-    window.addEventListener("scroll", measure, { passive: true });
-    window.addEventListener("resize", measure, { passive: true });
-    measure();
-    tick();
+    const wake = () => {
+      if (!running) {
+        running = true;
+        raf = requestAnimationFrame(tick);
+      }
+    };
+
+    window.addEventListener("scroll", wake, { passive: true });
+    window.addEventListener("resize", wake, { passive: true });
+    wake();
     return () => {
-      window.removeEventListener("scroll", measure);
-      window.removeEventListener("resize", measure);
+      window.removeEventListener("scroll", wake);
+      window.removeEventListener("resize", wake);
       cancelAnimationFrame(raf);
       track.style.height = "";
     };
@@ -352,7 +373,7 @@ export function Landing() {
           {/* The 3D world: five shelf bays receding into candlelight. */}
           <div
             ref={worldRef}
-            className="dolly-world"
+            className="dolly-world pointer-events-none"
             aria-hidden="true"
             data-testid="dolly-world"
           >
@@ -429,7 +450,6 @@ export function Landing() {
                 width: "34%",
                 height: "92%",
                 transform: "rotate(14deg)",
-                filter: "blur(18px)",
                 animationDuration: "11s",
               }}
             />
@@ -441,7 +461,6 @@ export function Landing() {
                 width: "26%",
                 height: "80%",
                 transform: "rotate(-11deg)",
-                filter: "blur(20px)",
                 animationDuration: "14s",
                 animationDelay: "3s",
               }}
