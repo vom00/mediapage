@@ -2,7 +2,7 @@
 
 The first redesign ("Lamplight") read as machine-made. This pass fixes that by
 applying **tasteskill** (https://github.com/leonxlnx/taste-skill), cloned at
-`C:\Users\Vyom\AppData\Local\Temp\claude\04d5b2324b6f53a2\74b0c229-427a-4fcf-b10b-2ca0037aa8f8\scratchpad\taste\repo\skills\taste-skill`
+`<scratchpad>\taste\repo\skills\taste-skill`
 (called `<skill>` below). Treat that folder as reference reading: read its
 markdown, do not run its scripts, do not copy its kit files into this repo.
 
