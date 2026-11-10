@@ -59,7 +59,7 @@ test.describe("profile and shelves", () => {
     ).toBeVisible();
   });
 
-  test("the sixth pick on a shelf is blocked with a clear message", async ({
+  test("a sixth pick is accepted but only five sit out front", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -67,23 +67,33 @@ test.describe("profile and shelves", () => {
 
     await page.goto(BASE_URL + "/library");
     await page.getByLabel(/search the library/i).fill("mononoke");
-    for (let n = 1; n <= 5; n++) {
+    for (let n = 1; n <= 6; n++) {
       await addAnimePick(page, n);
     }
 
-    // The boundary: number six must be refused, with the shelf intact.
-    await page.getByRole("button", { name: /Mononoke Hour 6$/ }).click();
-    const dialog = page.getByRole("dialog");
-    await dialog.getByRole("button", { name: /add to my shows shelf/i }).click();
-    await expect(appAlert(page)).toContainText(/already holds 5 favorites/i);
-    await dialog.getByRole("button", { name: /close/i }).click();
-
+    // A shelf holds far more than five (SHELF_CAPACITY); the profile
+    // features the first five and keeps the rest behind "See all".
     await page.goto(BASE_URL + "/u/fiveonly");
     const animeShelf = page.getByRole("region", { name: /shows/i });
     await expect(animeShelf.getByRole("listitem")).toHaveCount(5);
     await expect(
       animeShelf.getByRole("heading", { name: "Mononoke Hour 6", exact: true }),
     ).toBeHidden();
+  });
+
+  test("adding the same pick twice is refused with a clear message", async ({
+    page,
+  }) => {
+    await signUpAndOnboard(page, "nodupes", "No Dupes");
+
+    await page.goto(BASE_URL + "/library");
+    await page.getByLabel(/search the library/i).fill("mononoke");
+    await addAnimePick(page, 1);
+
+    await page.getByRole("button", { name: /Mononoke Hour 1$/ }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByRole("button", { name: /add to my shows shelf/i }).click();
+    await expect(appAlert(page)).toContainText(/already on this shelf/i);
   });
 
   test("owner reorders picks with keyboard controls, persists, then removes one", async ({

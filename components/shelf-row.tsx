@@ -18,8 +18,17 @@ import {
 import type { MediaCategory, MediaItem } from "@/lib/types";
 import { useShelfMotion } from "@/lib/use-shelf-motion";
 
-const controlClass =
-  "flex size-11 items-center justify-center border border-edge text-ink-muted transition-[color,border-color,transform] duration-150 ease-out hover:border-glow hover:text-ink active:scale-[0.97] disabled:opacity-30 disabled:hover:border-edge motion-reduce:transition-none motion-reduce:active:scale-100";
+// Owner controls: quiet icon buttons with 44px targets.
+const controlClass = "btn btn-quiet size-11 shrink-0 px-0";
+
+// One hue per shelf; the watchlist (mixed media) takes the accent.
+const SHELF_HUE: Record<string, string> = {
+  movie: "var(--shelf-movies)",
+  shows: "var(--shelf-shows)",
+  music: "var(--shelf-music)",
+  game: "var(--shelf-games)",
+  book: "var(--shelf-books)",
+};
 
 export function ShelfRow({
   uid,
@@ -27,7 +36,6 @@ export function ShelfRow({
   label,
   isOwner,
   addHref,
-  revealDelay = 0,
   mixed = false,
 }: {
   uid: string;
@@ -35,12 +43,16 @@ export function ShelfRow({
   label: string;
   isOwner: boolean;
   addHref: string;
-  revealDelay?: number;
   // The watchlist holds mixed media, so each pick takes its own
   // category's shape rather than one shared aspect for the row.
   mixed?: boolean;
 }) {
   const [picks, setPicks] = useState<MediaItem[]>([]);
+  // Scroll snapping stays off until the first snapshot lands. Otherwise
+  // the phone row snaps to the first empty slot, and when the picks are
+  // inserted ahead of it the browser follows that slot and scrolls the
+  // picks out of view.
+  const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
   const dragFrom = useRef<number | null>(null);
@@ -53,6 +65,7 @@ export function ShelfRow({
         setPicks(
           snap.exists() ? ((snap.data() as { picks?: MediaItem[] }).picks ?? []) : [],
         );
+        setLoaded(true);
       },
       // Access revoked mid-view (e.g. the owner went followers-only):
       // clear rather than keep showing shelves we can no longer read.
@@ -102,39 +115,45 @@ export function ShelfRow({
   return (
     <section
       aria-labelledby={`shelf-${shelfKey}`}
-      className="reveal border-t border-edge py-8"
-      style={{ "--reveal-delay": `${revealDelay}ms` } as React.CSSProperties}
+      className="py-8 sm:py-10"
+      style={
+        {
+          "--shelf-hue": SHELF_HUE[shelfKey] ?? "var(--accent)",
+        } as React.CSSProperties
+      }
     >
-      <div className="flex items-baseline justify-between gap-4">
+      <div className="flex items-center gap-3">
+        <span aria-hidden="true" className="shelf-mark" />
         <h2
           id={`shelf-${shelfKey}`}
-          className="font-display text-2xl tracking-tight"
+          className="text-2xl font-medium leading-none sm:text-3xl"
         >
           {label}
         </h2>
-        <div className="flex shrink-0 items-baseline gap-4">
+        <div className="ml-auto flex shrink-0 items-center gap-2">
           {isOwner ? (
             <Link
               href={addHref}
               aria-label={`Add to your ${label} shelf`}
-              className="font-label text-xs uppercase tracking-[0.2em] text-ink-muted transition-colors duration-200 hover:text-ink"
+              className="btn btn-quiet px-4"
             >
-              + Add
+              Add
             </Link>
           ) : null}
-          <p className="font-label text-xs text-ink-muted">{picks.length}</p>
+          <p className="chip font-label">{picks.length}</p>
         </div>
       </div>
 
       {error ? (
-        <p role="alert" className="mt-3 border-l-2 border-glow pl-3 text-sm">
+        <p role="alert" className="mt-3 border-l-2 border-danger pl-3 text-sm">
           {error}
         </p>
       ) : null}
 
       <ul
         id={`shelf-list-${shelfKey}`}
-        className="mt-6 flex list-none items-stretch overflow-x-auto p-0 pb-7 sm:grid sm:grid-cols-5 sm:overflow-visible"
+        style={loaded ? undefined : { scrollSnapType: "none" }}
+        className="shelf-run -mx-6 mt-8 flex list-none items-stretch overflow-x-auto px-6 pb-7 sm:mx-0 sm:grid sm:grid-cols-5 sm:overflow-visible sm:px-0"
       >
         {visible.map((item, index) => (
           <li
@@ -153,32 +172,34 @@ export function ShelfRow({
               dragFrom.current = null;
             }}
           >
-            <div
-              data-testid="shelf-case"
-              ref={caseRef(item.id)}
-              className={`shelf-case relative mx-2 w-full ${aspect}`}
-            >
-              {mixed ? (
-                <div className="absolute inset-0 overflow-hidden rounded-sm border border-edge bg-surface">
-                  <CoverImage
-                    src={item.imageUrl}
-                    alt={
-                      item.year
-                        ? `${item.title} (${item.year}) cover art`
-                        : `${item.title} cover art`
-                    }
-                  />
-                </div>
-              ) : (
-                <ShelfPiece item={item} />
-              )}
+            <div className="shelf-bay">
+              <div
+                data-testid="shelf-case"
+                ref={caseRef(item.id)}
+                className={`shelf-case relative w-full ${aspect}`}
+              >
+                {mixed ? (
+                  <div className="absolute inset-0 overflow-hidden rounded-sm border border-edge bg-surface">
+                    <CoverImage
+                      src={item.imageUrl}
+                      alt={
+                        item.year
+                          ? `${item.title} (${item.year}) cover art`
+                          : `${item.title} cover art`
+                      }
+                    />
+                  </div>
+                ) : (
+                  <ShelfPiece item={item} />
+                )}
+              </div>
             </div>
             <div data-testid="shelf-plank" aria-hidden="true" className="shelf-plank" />
-            <h3 className="mt-2 h-4 truncate px-1 text-center text-xs font-normal text-ink-muted">
+            <h3 className="mt-3 h-5 truncate px-2 text-center text-[13px] font-normal text-ink">
               {item.title}
             </h3>
             {isOwner ? (
-              <div className="mx-2 mt-2 flex gap-2">
+              <div className="mt-2 flex flex-wrap justify-center gap-0.5 px-1">
                 <button
                   type="button"
                   className={controlClass}
@@ -199,7 +220,7 @@ export function ShelfRow({
                 </button>
                 <button
                   type="button"
-                  className={`${controlClass} ml-auto`}
+                  className={controlClass}
                   aria-label={`Remove ${item.title} from ${label}`}
                   onClick={() => void handleRemove(item)}
                 >
@@ -215,22 +236,21 @@ export function ShelfRow({
             key={`empty-${i}`}
             className="flex w-40 shrink-0 flex-col sm:w-auto"
           >
-            {isOwner ? (
-              <Link
-                href={addHref}
-                aria-label={`Add to your ${label} shelf`}
-                className={`mx-2 flex w-full ${aspect} items-center justify-center border border-dashed border-edge text-ink-muted transition-colors duration-200 hover:border-glow hover:text-ink`}
-              >
-                <Plus aria-hidden="true" className="size-6" />
-              </Link>
-            ) : (
-              <div
-                aria-hidden="true"
-                className={`mx-2 w-full ${aspect} border border-dashed border-edge/50`}
-              />
-            )}
+            <div className="shelf-bay">
+              {isOwner ? (
+                <Link
+                  href={addHref}
+                  aria-label={`Add to your ${label} shelf`}
+                  className={`shelf-slot flex w-full ${aspect} items-center justify-center text-ink-muted`}
+                >
+                  <Plus aria-hidden="true" className="size-6" />
+                </Link>
+              ) : (
+                <div aria-hidden="true" className={`shelf-slot w-full ${aspect}`} />
+              )}
+            </div>
             <div data-testid="shelf-plank" aria-hidden="true" className="shelf-plank" />
-            <div aria-hidden="true" className="mt-2 h-4" />
+            <div aria-hidden="true" className="mt-3 h-5" />
             {isOwner ? <div aria-hidden="true" className="mt-2 h-11" /> : null}
           </li>
         ))}
@@ -242,7 +262,7 @@ export function ShelfRow({
           onClick={() => setExpanded((v) => !v)}
           aria-expanded={expanded}
           aria-controls={`shelf-list-${shelfKey}`}
-          className="font-label text-xs uppercase tracking-[0.2em] text-ink-muted underline underline-offset-4 transition-colors duration-200 hover:text-ink"
+          className="btn"
         >
           {expanded ? "Show less" : `See all ${picks.length}`}
         </button>

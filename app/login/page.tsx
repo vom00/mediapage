@@ -8,9 +8,9 @@ export const metadata: Metadata = {
 
 export default function LoginPage() {
   return (
-    <div className="relative flex min-h-[calc(100svh-3.6rem)] items-center overflow-hidden">
+    <div className="auth-stage relative flex items-center overflow-hidden">
       <LibraryBackdrop />
-      <div className="relative z-10 mx-auto w-full max-w-6xl px-6 py-20">
+      <div className="relative z-10 mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
         <LoginForm />
       </div>
     </div>

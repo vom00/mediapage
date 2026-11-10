@@ -7,16 +7,15 @@ export const metadata: Metadata = {
 
 export default function SettingsPage() {
   return (
-    <div className="mx-auto w-full max-w-6xl px-6 py-14 sm:py-20">
-      <p className="reveal font-label text-xs uppercase tracking-[0.3em] text-ink-muted">
-        Your page, your rules
-      </p>
-      <h1 className="reveal mt-3 font-display text-4xl tracking-tight sm:text-5xl">
-        Settings
+    <div className="mx-auto w-full max-w-6xl px-4 py-14 sm:px-6 sm:py-20">
+      <h1 className="text-5xl leading-[1.05] sm:text-7xl">
+        <span className="enter-line">
+          <span>Settings</span>
+        </span>
       </h1>
       <div
-        className="reveal mt-10"
-        style={{ "--reveal-delay": "120ms" } as React.CSSProperties}
+        className="enter-up mt-12 sm:mt-16"
+        style={{ "--enter-i": 1 } as React.CSSProperties}
       >
         <SettingsView />
       </div>

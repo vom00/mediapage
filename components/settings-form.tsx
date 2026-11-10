@@ -1,12 +1,15 @@
 "use client";
 
 import { signOut } from "firebase/auth";
+import { Check } from "lucide-react";
+import { motion, useReducedMotion } from "motion/react";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { Avatar } from "@/components/avatar";
 import {
   buttonClass,
   FieldError,
+  fileInputClass,
   ghostButtonClass,
   inputClass,
   labelClass,
@@ -39,6 +42,7 @@ export function SettingsForm({ profile }: { profile: UserProfile }) {
   const [busy, setBusy] = useState(false);
   const [deactivateError, setDeactivateError] = useState<string | null>(null);
   const confirmRef = useRef<HTMLDialogElement>(null);
+  const reduceMotion = useReducedMotion();
 
   function handleAvatarChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
@@ -106,195 +110,211 @@ export function SettingsForm({ profile }: { profile: UserProfile }) {
   }
 
   return (
-    <div className="flex flex-col gap-12">
-      <form onSubmit={handleSave} className="flex max-w-xl flex-col gap-6" noValidate>
-        <div>
-          <label htmlFor="display-name" className={labelClass}>
-            Display name
-          </label>
-          <input
-            id="display-name"
-            type="text"
-            required
-            maxLength={50}
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            className={`${inputClass} mt-2`}
-          />
-        </div>
-
-        <div>
-          <label htmlFor="bio" className={labelClass}>
-            Bio
-          </label>
-          <textarea
-            id="bio"
-            maxLength={280}
-            rows={3}
-            value={bio}
-            onChange={(e) => setBio(e.target.value)}
-            className={`${inputClass} mt-2 py-3`}
-            aria-describedby="bio-help"
-          />
-          <p id="bio-help" className="mt-2 text-xs text-ink-muted">
-            Up to 280 characters.
-          </p>
-        </div>
-
-        <div>
-          <label htmlFor="handle" className={labelClass}>
-            Handle
-          </label>
-          <div className="mt-2 flex items-center">
-            <span
-              aria-hidden="true"
-              className="flex min-h-11 items-center border border-r-0 border-edge bg-surface-raised px-3 text-ink-muted"
-            >
-              @
-            </span>
+    <div className="flex flex-col gap-14">
+      <form onSubmit={handleSave} className="flex flex-col gap-14" noValidate>
+        <SettingsGroup
+          title="Profile"
+          blurb="How you appear on your page and beside every recommendation you write."
+        >
+          <div>
+            <label htmlFor="display-name" className={labelClass}>
+              Display name
+            </label>
             <input
-              id="handle"
+              id="display-name"
               type="text"
               required
-              spellCheck={false}
-              value={handle}
-              onChange={(e) => setHandle(e.target.value)}
-              className={inputClass}
-              aria-describedby="handle-help"
+              maxLength={50}
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              className={`${inputClass} mt-2`}
             />
           </div>
-          <p id="handle-help" className="mt-2 text-xs text-ink-muted">
-            Changing your handle breaks links to your old address.
-          </p>
-        </div>
 
-        <div>
-          <label htmlFor="avatar" className={labelClass}>
-            Profile picture
-          </label>
-          <div className="mt-2 flex items-center gap-4">
-            {avatarPreview ? (
-              // eslint-disable-next-line @next/next/no-img-element -- local object URL preview
-              <img
-                src={avatarPreview}
-                alt="Preview of your new profile picture"
-                className="size-14 rounded-full border border-edge object-cover"
-              />
-            ) : profile.avatarUrl ? (
-              <Avatar
-                src={profile.avatarUrl}
-                name={profile.displayName}
-                alt="Your current profile picture"
-                className="size-14 rounded-full border border-edge"
-              />
-            ) : null}
-            <input
-              id="avatar"
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={handleAvatarChange}
-              className="block w-full text-sm text-ink-muted file:mr-4 file:min-h-11 file:cursor-pointer file:border file:border-edge file:bg-bg file:px-4 file:text-ink"
-              aria-describedby="avatar-help"
+          <div>
+            <label htmlFor="bio" className={labelClass}>
+              Bio
+            </label>
+            <textarea
+              id="bio"
+              maxLength={280}
+              rows={3}
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              className={`${inputClass} mt-2`}
+              aria-describedby="bio-help"
             />
-          </div>
-          {avatarError ? (
-            <FieldError id="avatar-help" message={avatarError} />
-          ) : (
-            <p id="avatar-help" className="mt-2 text-xs text-ink-muted">
-              JPEG, PNG, or WebP up to 5MB. Cropped to a square.
+            <p id="bio-help" className="mt-2 text-xs text-ink-muted">
+              Up to 280 characters.
             </p>
-          )}
-        </div>
-
-        <div>
-          <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm text-ink">
-            <input
-              type="checkbox"
-              checked={followersOnly}
-              onChange={(e) => setFollowersOnly(e.target.checked)}
-              className="size-4 accent-ink"
-            />
-            Make my page followers-only
-          </label>
-          <p className="mt-1 text-xs text-ink-muted">
-            New followers must be approved before they can see your profile and
-            shelves. Recommendations you post always stay public.
-          </p>
-        </div>
-
-        <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm text-ink">
-          <input
-            type="checkbox"
-            checked={defaultCommentsOn}
-            onChange={(e) => setDefaultCommentsOn(e.target.checked)}
-            className="size-4 accent-ink"
-          />
-          Allow comments on new recommendations by default
-        </label>
-
-        {error ? (
-          <div role="alert">
-            <FieldError id="settings-error" message={error} />
           </div>
-        ) : null}
-        {saved ? (
-          <p role="status" className="border-l-2 border-glow pl-3 text-sm">
-            Saved.
-          </p>
-        ) : null}
 
-        <button type="submit" disabled={busy} className={`${buttonClass} max-w-xs`}>
-          Save changes
-        </button>
+          <div>
+            <label htmlFor="handle" className={labelClass}>
+              Handle
+            </label>
+            <div className="mt-2 flex items-stretch">
+              <span
+                aria-hidden="true"
+                className="flex min-h-[46px] items-center rounded-l-[10px] border border-r-0 border-edge bg-surface-raised px-3.5 text-ink-muted"
+              >
+                @
+              </span>
+              <input
+                id="handle"
+                type="text"
+                required
+                spellCheck={false}
+                value={handle}
+                onChange={(e) => setHandle(e.target.value)}
+                className={`${inputClass} rounded-l-none!`}
+                aria-describedby="handle-help"
+              />
+            </div>
+            <p id="handle-help" className="mt-2 text-xs text-ink-muted">
+              Changing your handle breaks links to your old address.
+            </p>
+          </div>
+
+          <div>
+            <label htmlFor="avatar" className={labelClass}>
+              Profile picture
+            </label>
+            <div className="mt-2 flex items-center gap-4">
+              {avatarPreview ? (
+                // eslint-disable-next-line @next/next/no-img-element -- local object URL preview
+                <img
+                  src={avatarPreview}
+                  alt="Preview of your new profile picture"
+                  className="size-14 shrink-0 rounded-full border border-edge object-cover"
+                />
+              ) : profile.avatarUrl ? (
+                <Avatar
+                  src={profile.avatarUrl}
+                  name={profile.displayName}
+                  alt="Your current profile picture"
+                  className="size-14 shrink-0 rounded-full border border-edge"
+                />
+              ) : null}
+              <input
+                id="avatar"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handleAvatarChange}
+                className={fileInputClass}
+                aria-describedby="avatar-help"
+              />
+            </div>
+            {avatarError ? (
+              <FieldError id="avatar-help" message={avatarError} />
+            ) : (
+              <p id="avatar-help" className="mt-2 text-xs text-ink-muted">
+                JPEG, PNG, or WebP up to 5MB. Cropped to a square.
+              </p>
+            )}
+          </div>
+        </SettingsGroup>
+
+        <SettingsGroup
+          title="Privacy"
+          blurb="Who can see your page, and whether people can comment."
+        >
+          <div>
+            <label className="flex min-h-11 cursor-pointer items-center justify-between gap-4 font-medium text-ink">
+              Make my page followers-only
+              <input
+                type="checkbox"
+                checked={followersOnly}
+                onChange={(e) => setFollowersOnly(e.target.checked)}
+                className="switch"
+              />
+            </label>
+            <p className="mt-1 max-w-md text-xs leading-relaxed text-ink-muted">
+              New followers must be approved before they can see your profile
+              and shelves. Recommendations you post always stay public.
+            </p>
+          </div>
+
+          <div className="border-t border-edge pt-5">
+            <label className="flex min-h-11 cursor-pointer items-center justify-between gap-4 font-medium text-ink">
+              Allow comments on new recommendations by default
+              <input
+                type="checkbox"
+                checked={defaultCommentsOn}
+                onChange={(e) => setDefaultCommentsOn(e.target.checked)}
+                className="switch"
+              />
+            </label>
+          </div>
+        </SettingsGroup>
+
+        <div className="flex flex-col gap-4 border-t border-edge pt-8 sm:flex-row sm:items-center sm:gap-6 md:pl-[calc((100%-2.5rem)/3+2.5rem)]">
+          <button
+            type="submit"
+            disabled={busy}
+            className={`${buttonClass} sm:w-auto sm:min-w-52`}
+          >
+            Save changes
+          </button>
+          {error ? (
+            <div role="alert" className="min-w-0 flex-1">
+              <FieldError id="settings-error" message={error} />
+            </div>
+          ) : null}
+          {saved ? (
+            <motion.p
+              role="status"
+              initial={reduceMotion ? false : { opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.18, ease: [0.2, 0.8, 0.2, 1] }}
+              className="flex items-center gap-2 text-sm font-medium text-accent"
+            >
+              <Check aria-hidden="true" className="size-4" />
+              Saved.
+            </motion.p>
+          ) : null}
+        </div>
       </form>
 
-      <section
-        aria-labelledby="danger-heading"
-        className="max-w-xl border-t border-edge pt-8"
+      <SettingsGroup
+        id="danger-heading"
+        title="Danger zone"
       >
-        <h2
-          id="danger-heading"
-          className="font-display text-xl tracking-tight"
-        >
-          Deactivate
-        </h2>
-        <p className="mt-2 text-sm text-ink-muted">
-          Your page disappears from mediapage but nothing is destroyed. Log
-          back in any time to reactivate.
-        </p>
-        <button
-          type="button"
-          onClick={() => confirmRef.current?.showModal()}
-          className={`${ghostButtonClass} mt-4`}
-        >
-          Deactivate account
-        </button>
+        <div>
+          <p className="max-w-md text-sm leading-relaxed text-ink-muted">
+            Your page disappears from mediapage but nothing is destroyed. Log
+            back in any time to reactivate.
+          </p>
+          <button
+            type="button"
+            onClick={() => confirmRef.current?.showModal()}
+            className={`${ghostButtonClass} btn-danger mt-5`}
+          >
+            Deactivate account
+          </button>
+        </div>
 
         <dialog
           ref={confirmRef}
           aria-labelledby="confirm-heading"
-          className="m-auto w-[min(92vw,28rem)] border border-edge bg-surface-raised p-8 text-ink backdrop:bg-bg/70 backdrop:backdrop-blur-sm"
+          className="m-auto w-[min(92vw,28rem)] rounded-[24px] border border-edge bg-surface-raised p-7 text-ink backdrop:bg-bg/75 sm:p-8"
         >
-          <h3 id="confirm-heading" className="font-display text-2xl tracking-tight">
+          <h3
+            id="confirm-heading"
+            className="text-2xl font-medium leading-tight"
+          >
             Deactivate your account?
           </h3>
-          <p className="mt-3 text-sm text-ink-muted">
+          <p className="mt-4 text-sm leading-relaxed text-ink-muted">
             Your profile, shelves, and recommendations are hidden, not
             deleted. Logging back in lets you reactivate.
           </p>
           {deactivateError ? (
-            <p role="alert" className="mt-3 border-l-2 border-glow pl-3 text-sm">
+            <p role="alert" className="mt-4 text-sm text-danger">
               {deactivateError}
             </p>
           ) : null}
-          <div className="mt-6 flex gap-3">
-            <button
-              type="button"
-              onClick={() => void handleDeactivate()}
-              className={buttonClass}
-            >
-              Yes, deactivate
-            </button>
+          <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
             <button
               type="button"
               onClick={() => confirmRef.current?.close()}
@@ -302,9 +322,48 @@ export function SettingsForm({ profile }: { profile: UserProfile }) {
             >
               Cancel
             </button>
+            <button
+              type="button"
+              onClick={() => void handleDeactivate()}
+              className="btn btn-danger"
+            >
+              Yes, deactivate
+            </button>
           </div>
         </dialog>
-      </section>
+      </SettingsGroup>
+    </div>
+  );
+}
+
+// One grouped stretch of settings: a short heading column on the left
+// (stacked above on phones) and the fields on a card to its right.
+function SettingsGroup({
+  id,
+  title,
+  blurb,
+  children,
+}: {
+  id?: string;
+  title: string;
+  blurb?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] md:gap-10">
+      <div className="md:sticky md:top-24 md:self-start md:pt-2">
+        <h2 id={id} className="text-2xl">
+          {title}
+        </h2>
+        {blurb ? (
+          <p className="mt-3 max-w-xs text-sm leading-relaxed text-ink-muted">
+            {blurb}
+          </p>
+        ) : null}
+      </div>
+      <div className="card flex min-w-0 flex-col gap-6 p-6 sm:p-8">
+        {children}
+      </div>
     </div>
   );
 }

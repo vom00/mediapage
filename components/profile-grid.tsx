@@ -52,6 +52,15 @@ function useShelf(uid: string, shelfKey: ShelfKey): MediaItem[] {
   return picks;
 }
 
+// One hue per shelf, for the heading dot; the watchlist takes the accent.
+const SHELF_HUE: Record<string, string> = {
+  movie: "var(--shelf-movies)",
+  shows: "var(--shelf-shows)",
+  music: "var(--shelf-music)",
+  game: "var(--shelf-games)",
+  book: "var(--shelf-books)",
+};
+
 function CoverTile({ item, aspect }: { item: MediaItem; aspect: string }) {
   return (
     <div className="group w-16" title={item.title}>
@@ -122,12 +131,17 @@ function CompactShelf({
   const extra = picks.length - visible.length;
 
   return (
-    <section aria-labelledby={`grid-${shelfKey}`}>
-      <div className="flex items-baseline justify-between gap-3">
-        <h3
-          id={`grid-${shelfKey}`}
-          className="font-display text-lg tracking-tight"
-        >
+    <section
+      aria-labelledby={`grid-${shelfKey}`}
+      style={
+        {
+          "--shelf-hue": SHELF_HUE[shelfKey] ?? "var(--accent)",
+        } as React.CSSProperties
+      }
+    >
+      <div className="flex items-center gap-3">
+        <span aria-hidden="true" className="shelf-mark" />
+        <h3 id={`grid-${shelfKey}`} className="text-xl font-medium">
           {label}
         </h3>
         {picks.length > 0 ? (
@@ -160,7 +174,7 @@ function CompactShelf({
         <button
           type="button"
           onClick={() => setExpanded(false)}
-          className="mt-3 font-label text-xs uppercase tracking-[0.2em] text-ink-muted underline underline-offset-4 transition-colors duration-200 hover:text-ink"
+          className="btn btn-quiet mt-1"
         >
           Show less
         </button>
@@ -197,9 +211,15 @@ function CompactRecommendations({
 
   return (
     <section aria-labelledby="grid-recs">
-      <h3 id="grid-recs" className="font-display text-lg tracking-tight">
-        Recommendations
-      </h3>
+      <div
+        className="flex items-center gap-3"
+        style={{ "--shelf-hue": "var(--accent)" } as React.CSSProperties}
+      >
+        <span aria-hidden="true" className="shelf-mark" />
+        <h3 id="grid-recs" className="text-xl font-medium">
+          Recommendations
+        </h3>
+      </div>
       {recs === null ? (
         <div aria-hidden="true" className="skeleton mt-3 h-16 w-full" />
       ) : recs.length === 0 ? (
@@ -214,8 +234,12 @@ function CompactRecommendations({
                 <CoverImage src={rec.item.imageUrl} alt={rec.item.title} />
               </div>
               <div className="min-w-0">
-                <p className="truncate text-sm text-ink">{rec.item.title}</p>
-                <p className="line-clamp-2 text-xs text-ink-muted">{rec.note}</p>
+                <p className="truncate text-sm font-medium text-ink">
+                  {rec.item.title}
+                </p>
+                <p className="line-clamp-3 text-base leading-snug text-ink-muted">
+                  {rec.note}
+                </p>
               </div>
             </li>
           ))}

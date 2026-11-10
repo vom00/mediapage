@@ -1,30 +1,20 @@
 import type { Metadata } from "next";
-import {
-  Fraunces,
-  Mochiy_Pop_One,
-  Schibsted_Grotesk,
-  Spline_Sans_Mono,
-} from "next/font/google";
+import { Geist, Geist_Mono, Mochiy_Pop_One } from "next/font/google";
 import { AuthProvider } from "@/components/auth-provider";
 import { QueryProvider } from "@/components/query-provider";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteNav } from "@/components/site-nav";
 import "./globals.css";
 
-const display = Fraunces({
-  variable: "--font-display-var",
-  subsets: ["latin"],
-  style: ["normal", "italic"],
-  display: "swap",
-});
-
-const body = Schibsted_Grotesk({
-  variable: "--font-body-var",
+// One family for display and text (Geist, set at 500 for headlines),
+// and its mono for figures and metadata.
+const sans = Geist({
+  variable: "--font-geist-var",
   subsets: ["latin"],
   display: "swap",
 });
 
-const label = Spline_Sans_Mono({
+const mono = Geist_Mono({
   variable: "--font-label-var",
   subsets: ["latin"],
   display: "swap",
@@ -50,7 +40,7 @@ export const metadata: Metadata = {
     template: "%s · mediapage",
   },
   description:
-    "A profile for everything you love. Five favorites each across movies, TV, anime, music, games, and books.",
+    "A profile for everything you love. Five favorites up front across movies, shows, music, games, and books.",
 };
 
 export default function RootLayout({
@@ -61,7 +51,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${display.variable} ${body.variable} ${label.variable} ${wordmark.variable} h-full antialiased`}
+      className={`${sans.variable} ${mono.variable} ${wordmark.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col font-body">
         <a
@@ -70,7 +60,6 @@ export default function RootLayout({
         >
           Skip to content
         </a>
-        <div className="grain" aria-hidden="true" />
         <AuthProvider>
           <QueryProvider>
             <SiteNav />

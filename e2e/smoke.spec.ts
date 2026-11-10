@@ -29,9 +29,11 @@ test.describe("home page shell", () => {
     const bodyBg = await page.evaluate(
       () => getComputedStyle(document.body).backgroundColor,
     );
-    expect(bodyBg).toBe("rgb(10, 10, 11)");
+    expect(bodyBg).toBe("rgb(17, 17, 17)");
 
-    // All five shelves are presented on the shell
+    // All five shelves are presented on the shell. The walk's captions
+    // repeat the names over the 3D room, so read them from the index.
+    const shelves = main.locator('section[aria-labelledby="shelves-heading"]');
     for (const category of [
       "Movies",
       "Shows",
@@ -39,7 +41,7 @@ test.describe("home page shell", () => {
       "Video Games",
       "Books",
     ]) {
-      await expect(main.getByText(category, { exact: true })).toBeVisible();
+      await expect(shelves.getByText(category, { exact: true })).toBeVisible();
     }
 
     // No horizontal overflow on the page body

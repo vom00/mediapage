@@ -5,8 +5,8 @@ import { computeFlipDeltas, type FlipRect } from "@/lib/flip";
 
 const SLIDE_MS = 260;
 const SETTLE_MS = 300;
-// On-screen movement eases in and out; entrances ease out.
-const SLIDE_EASE = "cubic-bezier(0.645, 0.045, 0.355, 1)";
+// Everything eases out; nothing overshoots.
+const SLIDE_EASE = "cubic-bezier(0.2, 0.8, 0.2, 1)";
 const SETTLE_EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
 
 // Animates shelf cases between layouts: FLIP slides when picks

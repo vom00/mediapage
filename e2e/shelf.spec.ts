@@ -109,7 +109,7 @@ test.describe("physical shelf", () => {
     await page.goto(BASE_URL + "/u/forms");
     const shelf = page.getByRole("region", { name: /shows/i });
     // Shows play on a screen.
-    const piece = shelf.locator('[data-piece="tv"]').first();
+    const piece = shelf.locator('[data-piece="tablet"]').first();
     await expect(piece).toBeVisible();
     // The cover art still carries its descriptive alt.
     await expect(

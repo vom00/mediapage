@@ -32,7 +32,7 @@ function Avatar({
     <UserAvatar
       src={src}
       name={actor.displayName}
-      className="size-10 shrink-0 rounded-full border border-edge bg-surface-raised"
+      className="size-12 shrink-0 rounded-full border border-edge bg-surface-raised text-lg"
     />
   );
 }
@@ -88,9 +88,13 @@ export function NotificationsView() {
 
   if (status === "loading" || (user && !loaded)) {
     return (
-      <div aria-hidden="true" className="flex flex-col gap-3">
-        <div className="skeleton h-16 w-full" />
-        <div className="skeleton h-16 w-full" />
+      <div aria-hidden="true" className="flex flex-col border-t border-edge">
+        <div className="border-b border-edge py-3">
+          <div className="skeleton min-h-12 rounded-[var(--radius-sm)]" />
+        </div>
+        <div className="border-b border-edge py-3">
+          <div className="skeleton min-h-12 rounded-[var(--radius-sm)]" />
+        </div>
       </div>
     );
   }
@@ -102,7 +106,7 @@ export function NotificationsView() {
 
   if (notifications.length === 0) {
     return (
-      <p className="text-ink-muted">
+      <p className="max-w-md text-ink-muted">
         No notifications yet. When someone follows you — or asks to — you&rsquo;ll
         see it here.
       </p>
@@ -110,33 +114,30 @@ export function NotificationsView() {
   }
 
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-12">
       {error ? (
-        <p role="alert" className="border-l-2 border-glow pl-3 text-sm">
+        <p role="alert" className="border-l-2 border-danger pl-3 text-sm">
           {error}
         </p>
       ) : null}
       {requests.length > 0 ? (
         <section aria-labelledby="requests-heading">
-          <h2
-            id="requests-heading"
-            className="font-label text-xs uppercase tracking-[0.2em] text-ink-muted"
-          >
+          <h2 id="requests-heading" className="text-lg font-medium">
             Follow requests ({requests.length})
           </h2>
-          <ul className="mt-4 flex list-none flex-col gap-3 p-0">
+          <ul className="mt-4 flex list-none flex-col border-t border-edge p-0">
             {requests.map((req) => (
               <li
                 key={req.actorUid}
-                className="flex flex-wrap items-center gap-3 border-t border-edge pt-3 first:border-t-0 first:pt-0"
+                className="flex min-h-[4.5rem] flex-wrap items-center gap-x-4 gap-y-3 border-b border-edge py-3"
               >
                 <Link
                   href={`/u/${req.actor.handle}`}
-                  className="flex min-w-0 flex-1 items-center gap-3"
+                  className="flex min-w-0 flex-[1_1_100%] items-center gap-4 sm:flex-[1_1_0%]"
                 >
                   <Avatar actorUid={req.actorUid} actor={req.actor} />
                   <span className="min-w-0">
-                    <span className="block truncate text-sm font-medium text-ink">
+                    <span className="block truncate text-base font-medium tracking-tight text-ink">
                       {req.actor.displayName}
                     </span>
                     <span className="block truncate font-label text-xs text-ink-muted">
@@ -144,12 +145,12 @@ export function NotificationsView() {
                     </span>
                   </span>
                 </Link>
-                <div className="flex shrink-0 gap-2">
+                <div className="flex shrink-0 gap-3">
                   <button
                     type="button"
                     onClick={() => void respond(req.actorUid, true)}
                     disabled={busyUid === req.actorUid}
-                    className="liquid-glass flex min-h-9 items-center rounded-full px-4 text-sm text-ink transition-opacity duration-200 hover:opacity-90 disabled:opacity-50"
+                    className="btn btn-primary"
                   >
                     Approve
                   </button>
@@ -158,7 +159,7 @@ export function NotificationsView() {
                     onClick={() => void respond(req.actorUid, false)}
                     disabled={busyUid === req.actorUid}
                     aria-label={`Decline follow request from @${req.actor.handle}`}
-                    className="flex min-h-9 items-center rounded-full border border-edge px-4 text-sm text-ink-muted transition-colors duration-200 hover:border-glow hover:text-ink disabled:opacity-50"
+                    className="btn btn-quiet"
                   >
                     Decline
                   </button>
@@ -171,26 +172,25 @@ export function NotificationsView() {
 
       {followers.length > 0 ? (
         <section aria-labelledby="followers-heading">
-          <h2
-            id="followers-heading"
-            className="font-label text-xs uppercase tracking-[0.2em] text-ink-muted"
-          >
+          <h2 id="followers-heading" className="text-lg font-medium">
             New followers
           </h2>
-          <ul className="mt-4 flex list-none flex-col p-0">
+          <ul className="mt-4 flex list-none flex-col border-t border-edge p-0">
             {followers.map((f) => (
               <li
                 key={f.actorUid}
-                className="border-t border-edge last:border-b"
+                className="border-b border-edge"
               >
                 <Link
                   href={`/u/${f.actor.handle}`}
-                  className="flex items-center gap-3 py-4 transition-colors duration-200 hover:bg-surface"
+                  className="-mx-3 flex min-h-[4.5rem] items-center gap-4 rounded-[var(--radius-sm)] px-3 py-3 transition-colors duration-150 hover:bg-surface"
                 >
                   <Avatar actorUid={f.actorUid} actor={f.actor} />
                   <span className="min-w-0 flex-1">
-                    <span className="text-sm text-ink">
-                      <span className="font-medium">{f.actor.displayName}</span>{" "}
+                    <span className="block text-ink">
+                      <span className="font-medium tracking-tight">
+                        {f.actor.displayName}
+                      </span>{" "}
                       <span className="text-ink-muted">started following you</span>
                     </span>
                     <span className="mt-0.5 block font-label text-xs text-ink-muted">
@@ -198,7 +198,7 @@ export function NotificationsView() {
                     </span>
                   </span>
                   {isUnread(f, prevSeenAt) ? (
-                    <span className="shrink-0 rounded-full border border-glow px-2 py-0.5 font-label text-[10px] uppercase tracking-wide text-ink">
+                    <span className="shrink-0 text-sm font-medium text-accent">
                       New
                     </span>
                   ) : null}

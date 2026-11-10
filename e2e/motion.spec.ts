@@ -5,22 +5,29 @@ import { BASE_URL } from "./support/helpers";
 // want it and disappears for people who asked their OS to reduce it.
 
 test.describe("motion and reduced motion", () => {
-  test("the landing reveal animates normally and is disabled under reduced motion", async ({
+  test("the landing entrance animates normally and is disabled under reduced motion", async ({
     browser,
   }) => {
+    // The hero's headline rises line by line out of its masks, then the
+    // lead fades up (enter-line / enter-up in globals.css). The landing
+    // has no scroll-triggered .reveal.
     const animated = await browser.newPage();
     await animated.goto(BASE_URL + "/");
     const name = await animated
-      .locator(".reveal")
+      .locator(".enter-line > span")
       .first()
       .evaluate((el) => getComputedStyle(el).animationName);
-    expect(name).toBe("rise-in");
+    expect(name).toBe("enter-line-rise");
+    const lead = await animated
+      .locator(".room-lede")
+      .evaluate((el) => getComputedStyle(el).animationName);
+    expect(lead).toBe("enter-fade-up");
     await animated.close();
 
     const reduced = await browser.newPage({ reducedMotion: "reduce" });
     await reduced.goto(BASE_URL + "/");
     const reducedName = await reduced
-      .locator(".reveal")
+      .locator(".enter-line > span")
       .first()
       .evaluate((el) => getComputedStyle(el).animationName);
     expect(reducedName).toBe("none");
@@ -66,10 +73,10 @@ test.describe("motion and reduced motion", () => {
       await page
         .getByRole("button", { name: /view details for paper moon 1$/i })
         .hover();
-      // Let the 200ms transition finish.
+      // Let the 180ms transition finish.
       await page.waitForTimeout(450);
-      // Tailwind v4 lifts via the standalone translate/rotate
-      // properties, not a transform matrix.
+      // Tailwind v4 lifts via the standalone translate property (2px up);
+      // rotate is read too so a tilt shows up as a "deg" value.
       const movement = await card.evaluate((el) => {
         const s = getComputedStyle(el);
         return [s.transform, s.translate, s.rotate].join("|");
@@ -78,10 +85,12 @@ test.describe("motion and reduced motion", () => {
       return movement;
     }
 
-    const LIFTED = /-4px|0\.4deg/;
+    const LIFTED = /-2px/;
 
     const normal = await hoverAndMeasure(false);
     expect(normal).toMatch(LIFTED);
+    // The card no longer tilts at all.
+    expect(normal).not.toMatch(/deg/);
 
     const reduced = await hoverAndMeasure(true);
     expect(reduced).not.toMatch(LIFTED);

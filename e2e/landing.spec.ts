@@ -1,92 +1,255 @@
 import { expect, test } from "@playwright/test";
 import { BASE_URL } from "./support/helpers";
 
-// The immersive landing: a candlelit dolly through five shelf bays,
-// live CTAs, ambient motion that vanishes under reduced motion.
+// The landing: a hero over a low-poly media room, a walk through that
+// room by scrolling, one pinned "how a profile works" section, the five
+// shelves on the light band, and a close. Live actions over a poster that
+// is in the server HTML; the 3D canvas is decoration that may or may not
+// arrive; the walk collapses to one still screen under reduced motion.
 
-test.describe("immersive landing", () => {
-  test("the hero stands at the mouth of the stacks with live CTAs", async ({
+test.describe("landing", () => {
+  test("the hero is one screen with a headline, a lead and two actions", async ({
     page,
   }) => {
     await page.goto(BASE_URL + "/");
 
-    await expect(
-      page.getByRole("heading", { level: 1, name: /five favorites/i }),
-    ).toBeVisible();
+    const h1 = page.getByRole("heading", { level: 1, name: /five favorites/i });
+    await expect(h1).toBeVisible();
+    // A plain sentence, weight 500, no italic or coloured word.
+    const style = await h1.evaluate((el) => ({
+      weight: getComputedStyle(el).fontWeight,
+      italic: el.querySelectorAll("em, i").length,
+    }));
+    expect(style.weight).toBe("500");
+    expect(style.italic).toBe(0);
 
-    // The 3D world exists and is purely decorative.
-    const world = page.locator('[data-testid="dolly-world"]');
-    await expect(world).toHaveCount(1);
-    await expect(world).toHaveAttribute("aria-hidden", "true");
-    // Five bays, each lit by a pair of candle flames.
-    expect(await world.locator(".dolly-flame").count()).toBeGreaterThanOrEqual(10);
+    // The room is the hero's picture and is purely decorative.
+    const scene = page.locator('[data-testid="room-scene"]');
+    await expect(scene).toHaveCount(1);
+    await expect(scene).toHaveAttribute("aria-hidden", "true");
 
-    // Two "Start your shelf" CTAs exist (hero + finale); the hero one
-    // is the visible one at the top of the walk.
+    // The two actions sit on the first screen.
     const start = page.getByRole("link", { name: /start your shelf/i }).first();
     await expect(start).toBeVisible();
     await expect(start).toHaveAttribute("href", "/login");
-    await expect(
-      page.getByRole("link", { name: /browse the library/i }),
-    ).toHaveAttribute("href", "/library");
+    await expect(start).toHaveClass(/btn-primary/);
+    const browse = page.getByRole("link", { name: /browse the library/i });
+    await expect(browse).toHaveAttribute("href", "/library");
+    const fold = await page.evaluate(() => window.innerHeight);
+    for (const link of [start, browse]) {
+      const box = await link.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.y + box!.height).toBeLessThanOrEqual(fold);
+    }
 
-    // The five-shelf index still follows below the fold. (The bay
-    // labels inside the aria-hidden world duplicate these names, so
-    // scope to the index.)
-    await expect(
-      page
-        .locator('section[aria-labelledby="shelves-heading"]')
-        .getByText("Video Games", { exact: true }),
-    ).toBeVisible();
+    // No eyebrow above the headline, no scroll hint.
+    await expect(page.getByText(/scroll to walk the room/i)).toHaveCount(0);
+    await expect(page.getByText(/your taste, on one page/i)).toHaveCount(0);
   });
 
-  test("the candles flicker and the walk is long, except under reduced motion", async ({
+  test("the headline enters line by line, and not under reduced motion", async ({
     browser,
   }) => {
     const animated = await browser.newPage();
     await animated.goto(BASE_URL + "/");
-    const flicker = await animated
-      .locator(".dolly-flame")
+    const name = await animated
+      .locator(".room-headline .enter-line > span")
       .first()
       .evaluate((el) => getComputedStyle(el).animationName);
-    expect(flicker).toContain("candle-flicker");
-    // The camera script stretches the track into a real walk.
-    await animated.waitForFunction(() => {
-      const track = document.querySelector(".dolly-track");
-      return (
-        track !== null &&
-        track.getBoundingClientRect().height > window.innerHeight * 2
-      );
-    });
+    expect(name).toBe("enter-line-rise");
     await animated.close();
 
     const reduced = await browser.newPage({ reducedMotion: "reduce" });
     await reduced.goto(BASE_URL + "/");
-    const reducedFlicker = await reduced
-      .locator(".dolly-flame")
+    const reducedName = await reduced
+      .locator(".room-headline .enter-line > span")
       .first()
       .evaluate((el) => getComputedStyle(el).animationName);
-    expect(reducedFlicker).toBe("none");
-    // The walk collapses to a single static screen.
-    const collapsed = await reduced.locator(".dolly-track").evaluate(
-      (el) => el.getBoundingClientRect().height <= window.innerHeight + 1,
-    );
-    expect(collapsed).toBe(true);
+    expect(reducedName).toBe("none");
     await reduced.close();
   });
 
-  test("the walk can be skipped straight to the finale", async ({ page }) => {
+  test("the server HTML carries the headline and the room's poster", async ({
+    request,
+  }) => {
+    // Nothing above the fold waits on WebGL or client JS.
+    const html = await (await request.get(BASE_URL + "/")).text();
+    expect(html).toMatch(/Your five favorites/);
+    expect(html).toContain("/landing/room-poster.webp");
+    expect(html).toContain('data-testid="room-scene"');
+  });
+
+  test("the walk is long, except under reduced motion", async ({ browser }) => {
+    const animated = await browser.newPage();
+    await animated.goto(BASE_URL + "/");
+    const long = await animated.locator(".room-track").evaluate(
+      (el) => el.getBoundingClientRect().height > window.innerHeight * 4,
+    );
+    expect(long).toBe(true);
+    await animated.close();
+
+    const reduced = await browser.newPage({ reducedMotion: "reduce" });
+    await reduced.goto(BASE_URL + "/");
+    // One still screen: the stage does not pin, the room stays a poster
+    // and never mounts a canvas, and the walk's chrome is gone.
+    const stage = await reduced.locator(".room-stage").evaluate((el) => ({
+      position: getComputedStyle(el).position,
+      height: el.getBoundingClientRect().height,
+      viewport: window.innerHeight,
+    }));
+    expect(stage.position).not.toBe("sticky");
+    expect(stage.height).toBeLessThanOrEqual(Math.max(stage.viewport, 560) + 1);
+    await reduced.waitForTimeout(1500);
+    await expect(reduced.locator('[data-testid="room-scene"] canvas')).toHaveCount(0);
+    await expect(
+      reduced.locator('[data-testid="room-scene"]'),
+    ).toHaveAttribute("data-mode", "poster");
+    await expect(
+      reduced.getByRole("button", { name: /skip to the five shelves/i }),
+    ).toBeHidden();
+    // The close is still there, as ordinary page.
+    await expect(
+      reduced.getByRole("heading", { name: /the next shelf is yours/i }),
+    ).toBeVisible();
+    await reduced.close();
+  });
+
+  test("the walk can be skipped to the five shelves", async ({ page }) => {
     await page.goto(BASE_URL + "/");
     await page
       .getByRole("button", { name: /skip to the five shelves/i })
       .click();
-    // The damped camera glides to the end; the finale rises.
-    await expect(
-      page.getByRole("heading", { name: /the next shelf is yours/i }),
-    ).toBeVisible();
+    await expect(page.locator("#shelves-heading")).toBeInViewport();
     await expect(
       page.getByRole("link", { name: /see the five shelves/i }),
     ).toHaveAttribute("href", "#shelves-heading");
+  });
+
+  test("the five shelves sit on the light band, named without numbers", async ({
+    page,
+  }) => {
+    await page.goto(BASE_URL + "/");
+    const band = page.locator('section[aria-labelledby="shelves-heading"]');
+    await expect(band).toHaveClass(/bg-inv-bg/);
+    for (const name of ["Movies", "Shows", "Music", "Video Games", "Books"]) {
+      await expect(band.getByText(name, { exact: true })).toBeVisible();
+    }
+    await expect(band.getByText(/^0?[1-5] \/ 05$/)).toHaveCount(0);
+  });
+
+  test("how a profile works pins, scrubs its frames and holds one loop", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(BASE_URL + "/");
+    const section = page.locator(".lp-chap");
+    await expect(section).toHaveAttribute("data-pinned", "true");
+
+    const pin = await section.evaluate((el) => ({
+      height: el.getBoundingClientRect().height,
+      sticky: getComputedStyle(el.querySelector(".lp-chap-pin")!).position,
+      viewport: window.innerHeight,
+    }));
+    expect(pin.sticky).toBe("sticky");
+    expect(pin.height).toBeGreaterThan(pin.viewport * 1.8);
+
+    const frameOpacity = async (name: string) =>
+      Number(
+        await page
+          .locator(`.lp-frame[data-frame="${name}"]`)
+          .evaluate((el) => getComputedStyle(el).opacity),
+      );
+    const scrollTo = async (fraction: number) => {
+      await page.evaluate((f) => {
+        const el = document.querySelector(".lp-chap") as HTMLElement;
+        const top = el.getBoundingClientRect().top + window.scrollY;
+        window.scrollTo(
+          0,
+          top - 64 + (el.offsetHeight - window.innerHeight) * f + (f ? 64 : 0),
+        );
+      }, fraction);
+      await page.waitForTimeout(300);
+    };
+
+    // Scrubbed to the scrollbar: each step's frame is the open one at
+    // its own stretch of the scroll, and it runs backwards on the way up.
+    await scrollTo(0);
+    await expect.poll(() => frameOpacity("shelf")).toBeGreaterThan(0.95);
+    await expect.poll(() => frameOpacity("note")).toBeLessThan(0.05);
+    await scrollTo(0.5);
+    await expect.poll(() => frameOpacity("note")).toBeGreaterThan(0.95);
+    await expect.poll(() => frameOpacity("shelf")).toBeLessThan(0.05);
+    await scrollTo(1);
+    await expect.poll(() => frameOpacity("people")).toBeGreaterThan(0.95);
+    await scrollTo(0.5);
+    await expect.poll(() => frameOpacity("note")).toBeGreaterThan(0.95);
+
+    // One timed loop, with a pause button that freezes it.
+    await scrollTo(0);
+    const pause = page.getByRole("button", { name: "Pause animation" });
+    await expect(pause).toBeVisible();
+    const box = await pause.boundingBox();
+    expect(Math.round(box!.width)).toBe(32);
+    expect(Math.round(box!.height)).toBe(32);
+    const mover = page.locator(".lp-cv-left");
+    expect(
+      await mover.evaluate((el) => getComputedStyle(el).animationDuration),
+    ).toBe("3.2s");
+    await pause.click();
+    await expect(
+      page.getByRole("button", { name: "Play animation" }),
+    ).toBeVisible();
+    expect(
+      await mover.evaluate((el) => getComputedStyle(el).animationPlayState),
+    ).toBe("paused");
+  });
+
+  test("the chapters rest stacked and visible under reduced motion and on phones", async ({
+    browser,
+  }) => {
+    const reduced = await browser.newPage({ reducedMotion: "reduce" });
+    await reduced.goto(BASE_URL + "/");
+    await expect(reduced.locator(".lp-chap")).not.toHaveAttribute(
+      "data-pinned",
+      "true",
+    );
+    for (const frame of ["shelf", "note", "people"]) {
+      const f = reduced.locator(`.lp-frame[data-frame="${frame}"]`);
+      await expect(f).toBeVisible();
+      expect(await f.evaluate((el) => getComputedStyle(el).opacity)).toBe("1");
+    }
+    await expect(
+      reduced.getByRole("button", { name: /pause animation/i }),
+    ).toBeHidden();
+    await reduced.close();
+
+    const phone = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    await phone.goto(BASE_URL + "/");
+    await expect(phone.locator(".lp-chap")).not.toHaveAttribute(
+      "data-pinned",
+      "true",
+    );
+    await expect(phone.locator(".lp-frame").first()).toBeVisible();
+    await phone.close();
+  });
+
+  test("the close has the heading and one primary action", async ({ page }) => {
+    await page.goto(BASE_URL + "/");
+    const close = page.locator('section[aria-labelledby="close-heading"]');
+    await expect(
+      close.getByRole("heading", { name: /the next shelf is yours/i }),
+    ).toBeVisible();
+    await expect(close.getByRole("link")).toHaveCount(1);
+    await expect(
+      close.getByRole("link", { name: /start your shelf/i }),
+    ).toHaveAttribute("href", "/login");
+  });
+
+  test("nothing on the landing is revealed by scrolling it into view", async ({
+    page,
+  }) => {
+    await page.goto(BASE_URL + "/");
+    expect(await page.locator(".reveal").count()).toBe(0);
   });
 
   test("the colored library hall stands behind the login page too", async ({
@@ -138,21 +301,25 @@ test.describe("immersive landing", () => {
     await reduced.close();
   });
 
-  test("the hero overflows nothing at phone width", async ({ page }) => {
-    await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto(BASE_URL + "/");
-    await expect(
-      page.getByRole("heading", { level: 1, name: /five favorites/i }),
-    ).toBeVisible();
-    const overflow = await page.evaluate(() => {
-      document.getAnimations().forEach((animation) => {
-        const end = Number(animation.effect?.getComputedTiming().endTime);
-        if (Number.isFinite(end)) animation.finish();
-        else animation.cancel();
+  test("the hero overflows nothing at phone, tablet and wide widths", async ({
+    page,
+  }) => {
+    for (const width of [375, 768, 1920]) {
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto(BASE_URL + "/");
+      await expect(
+        page.getByRole("heading", { level: 1, name: /five favorites/i }),
+      ).toBeVisible();
+      const overflow = await page.evaluate(() => {
+        document.getAnimations().forEach((animation) => {
+          const end = Number(animation.effect?.getComputedTiming().endTime);
+          if (Number.isFinite(end)) animation.finish();
+          else animation.cancel();
+        });
+        const el = document.documentElement;
+        return el.scrollWidth - el.clientWidth;
       });
-      const el = document.documentElement;
-      return el.scrollWidth - el.clientWidth;
-    });
-    expect(overflow).toBeLessThanOrEqual(0);
+      expect(overflow).toBeLessThanOrEqual(0);
+    }
   });
 });

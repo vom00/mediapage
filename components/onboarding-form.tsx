@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import {
   buttonClass,
+  fileInputClass,
   FieldError,
   inputClass,
   labelClass,
@@ -86,21 +87,28 @@ export function OnboardingForm() {
   }
 
   return (
-    <div className="reveal mx-auto w-full max-w-md border border-edge bg-surface p-8 sm:p-10">
-      <p className="font-label text-xs uppercase tracking-[0.3em] text-ink-muted">
-        One-time setup
-      </p>
-      <h1 className="mt-3 font-display text-3xl tracking-tight">
-        Claim your page
+    <div className="card mx-auto w-full max-w-md p-7 sm:p-10">
+      <h1 className="text-4xl leading-[1.05] sm:text-5xl">
+        <span className="enter-line">
+          <span>Claim your page</span>
+        </span>
       </h1>
 
-      <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-5" noValidate>
+      <form
+        onSubmit={handleSubmit}
+        className="enter-up mt-8 flex flex-col gap-5"
+        style={{ "--enter-i": 1 } as React.CSSProperties}
+        noValidate
+      >
         <div>
           <label htmlFor="handle" className={labelClass}>
             Handle
           </label>
-          <div className="mt-2 flex items-center">
-            <span aria-hidden="true" className="border border-r-0 border-edge bg-surface-raised px-3 py-2 min-h-11 flex items-center text-ink-muted">
+          <div className="mt-2 flex items-stretch">
+            <span
+              aria-hidden="true"
+              className="flex min-h-[46px] items-center rounded-l-[10px] border border-r-0 border-edge bg-surface-raised px-3.5 text-ink-muted"
+            >
               @
             </span>
             <input
@@ -111,7 +119,7 @@ export function OnboardingForm() {
               required
               value={handle}
               onChange={(e) => setHandle(e.target.value)}
-              className={inputClass}
+              className={`${inputClass} rounded-l-none!`}
               aria-describedby="handle-help"
             />
           </div>
@@ -150,7 +158,7 @@ export function OnboardingForm() {
             type="file"
             accept="image/jpeg,image/png,image/webp"
             onChange={handleAvatarChange}
-            className="mt-2 block w-full text-sm text-ink-muted file:mr-4 file:min-h-11 file:cursor-pointer file:border file:border-edge file:bg-bg file:px-4 file:text-ink"
+            className={`${fileInputClass} mt-2`}
             aria-describedby="avatar-help"
           />
           {avatarError ? (
@@ -176,7 +184,7 @@ export function OnboardingForm() {
           </div>
         ) : null}
 
-        <button type="submit" disabled={busy} className={buttonClass}>
+        <button type="submit" disabled={busy} className={`${buttonClass} mt-1`}>
           Finish
         </button>
       </form>

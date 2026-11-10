@@ -1,24 +1,25 @@
-// Shared monochrome form styling. Labels are real labels, errors
-// render adjacent to their field and are announced politely.
+// Shared form vocabulary. Labels are real labels, errors render adjacent
+// to their field and are announced politely. The classes below are thin
+// names for the primitives in globals.css (.field, .btn) so every form in
+// the app reads the same.
 
-export const inputClass =
-  "w-full min-h-11 border border-edge bg-bg px-4 py-2 text-ink placeholder:text-ink-muted/60 transition-colors duration-200 focus:border-glow";
+export const inputClass = "field";
 
-export const labelClass =
-  "block font-label text-xs uppercase tracking-[0.2em] text-ink-muted";
+// 14px, weight 500, sentence case.
+export const labelClass = "block text-sm font-medium text-ink";
 
-// All action buttons are liquid-glass pills, matching the homepage
-// CTAs and people-search follow buttons. Primary is bolder; secondary
-// is lighter weight but the same glass so the set stays consistent.
-export const buttonClass =
-  "liquid-glass flex min-h-11 w-full items-center justify-center rounded-full px-6 font-medium text-ink transition-opacity duration-200 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50";
+// One primary button, one plain one.
+export const buttonClass = "btn btn-primary w-full";
 
-export const ghostButtonClass =
-  "liquid-glass flex min-h-11 items-center justify-center rounded-full px-6 text-sm text-ink transition-opacity duration-200 hover:opacity-90 disabled:opacity-50";
+export const ghostButtonClass = "btn";
+
+// A native file input whose button matches `.btn`.
+export const fileInputClass =
+  "block w-full min-w-0 text-sm text-ink-muted file:mr-4 file:min-h-11 file:cursor-pointer file:rounded-full file:border-0 file:bg-[color-mix(in_oklab,var(--text)_8%,var(--bg))] file:px-5 file:text-sm file:font-medium file:text-ink file:transition-colors hover:file:bg-[color-mix(in_oklab,var(--text)_14%,var(--bg))]";
 
 export function FieldError({ id, message }: { id: string; message: string }) {
   return (
-    <p id={id} className="mt-2 border-l-2 border-glow pl-3 text-sm text-ink">
+    <p id={id} className="mt-2 text-sm text-danger">
       {message}
     </p>
   );

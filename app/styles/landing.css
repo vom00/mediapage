@@ -1,0 +1,723 @@
+/* ---- The landing ----
+   A low-poly media room at night (components/landing/room-canvas.tsx)
+   pinned behind the hero and the walk. The track is sized in CSS so the
+   page never shifts when the canvas arrives; the walk only exists when
+   the visitor has not asked to reduce motion. Under reduce, the hero
+   stands over the poster for one screen and nothing is pinned.
+   Below it: the pinned chapters, the five shelves on the inverse band,
+   and the close. Grounds are flat tokens; a divider is a 1px line. */
+
+.room-page {
+  /* Run the room up under the sticky glass nav: the scene is the
+     page's first surface, not a box below the header. */
+  margin-top: -4rem;
+}
+
+.room-track {
+  position: relative;
+  border-bottom: 1px solid var(--border);
+}
+
+.room-stage {
+  position: relative;
+  height: 100svh;
+  min-height: 560px;
+  overflow: hidden;
+  isolation: isolate;
+  background: var(--bg);
+}
+
+.room-scene {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.room-poster,
+.room-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.room-poster {
+  object-fit: cover;
+  object-position: 50% 50%;
+}
+
+.room-canvas {
+  opacity: 0;
+  transition: opacity 900ms var(--ease-out);
+}
+
+.room-scene[data-mode="live"] .room-canvas {
+  opacity: 1;
+}
+
+/* A small shelf-hue dot beside a shelf name. */
+.lp-dot {
+  display: inline-block;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+}
+
+/* ---- Hero ---- */
+
+.room-hero {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 2;
+  height: 100svh;
+  min-height: 560px;
+  display: flex;
+  align-items: flex-end;
+  padding: 6rem 0 1.75rem;
+  pointer-events: none;
+}
+
+.room-hero-copy {
+  width: 100%;
+  max-width: 72rem;
+  margin: 0 auto;
+  padding-inline: 1rem;
+  pointer-events: auto;
+}
+
+@media (min-width: 640px) {
+  .room-hero-copy {
+    padding-inline: 1.5rem;
+  }
+}
+
+@media (min-aspect-ratio: 11/10) {
+  .room-hero {
+    align-items: center;
+    padding: 5rem 0 3rem;
+  }
+}
+
+.room-headline {
+  font-size: clamp(2.125rem, 8.4vw, 4.25rem);
+  font-weight: 500;
+  line-height: 1.02;
+  letter-spacing: -0.045em;
+  color: var(--text);
+}
+
+@media (min-aspect-ratio: 11/10) {
+  .room-headline {
+    font-size: clamp(2.5rem, 4vw, 4.25rem);
+  }
+}
+
+.room-lede {
+  margin-top: 1.25rem;
+  max-width: 28rem;
+  font-size: 1.0625rem;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+.room-ctas {
+  margin-top: 1.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.room-cta {
+  min-height: 52px;
+  padding: 0 1.5rem;
+  font-size: 1rem;
+}
+
+/* ---- The walk's chrome: captions and the skip control ---- */
+
+.room-captions {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  display: none;
+}
+
+.room-caption {
+  position: absolute;
+  left: 1rem;
+  right: 4.5rem;
+  bottom: 1.25rem;
+  visibility: hidden;
+}
+
+.room-caption-card {
+  max-width: 24rem;
+  padding: 1.125rem 1.375rem 1.25rem;
+}
+
+@media (min-aspect-ratio: 11/10) {
+  .room-caption {
+    left: max(1.5rem, calc((100vw - 72rem) / 2 + 1.5rem));
+    right: auto;
+    bottom: auto;
+    top: 50%;
+    margin-top: -3rem;
+  }
+}
+
+.room-caption-name {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-size: clamp(1.75rem, 2.6vw, 2.25rem);
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.035em;
+  color: var(--text);
+}
+
+.room-caption-name .lp-dot {
+  width: 10px;
+  height: 10px;
+}
+
+.room-caption-line {
+  margin-top: 0.5rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.room-skip {
+  position: absolute;
+  right: 1rem;
+  bottom: 1.25rem;
+  z-index: 3;
+  display: none;
+  visibility: hidden;
+}
+
+.room-skip-btn {
+  width: 44px;
+  padding: 0;
+  color: var(--text-muted);
+}
+
+.room-skip-btn:hover {
+  color: var(--text);
+}
+
+/* ---- The walk itself (motion allowed) ---- */
+
+@media (prefers-reduced-motion: no-preference) {
+  .room-track {
+    /* The hero screen, five stations about a screen apart, and a pull
+       back to the whole room. The stage pins while the track scrolls
+       past. */
+    height: 700svh;
+  }
+
+  .room-stage {
+    position: sticky;
+    top: 0;
+  }
+
+  .room-captions,
+  .room-skip {
+    display: block;
+  }
+}
+
+/* ---- The pinned chapters ----
+   Without script, under reduced motion and on phones: three steps, each
+   followed by its frame, stacked and all visible. With data-pinned (set
+   by the component where the viewport suits it) the section is two
+   screens tall, its content holds with position: sticky, and the frames
+   share one cell and crossfade as the steps open. */
+
+.lp-chap {
+  position: relative;
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 5rem 1rem 5rem;
+}
+
+@media (min-width: 640px) {
+  .lp-chap {
+    padding-inline: 1.5rem;
+  }
+}
+
+.lp-chap-head {
+  font-size: clamp(1.75rem, 3vw, 2.25rem);
+  line-height: 1.1;
+}
+
+.lp-chap-step {
+  margin-top: 3rem;
+}
+
+.lp-chap-text {
+  position: relative;
+  padding-left: 1.25rem;
+  border-left: 1px solid var(--border);
+}
+
+.lp-chap-title {
+  text-wrap: balance;
+  font-size: clamp(1.375rem, 2.4vw, 1.75rem);
+  line-height: 1.2;
+  color: var(--text);
+}
+
+.lp-chap-body {
+  margin-top: 0.625rem;
+  max-width: 28rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.lp-chap-more {
+  margin-top: 3rem;
+}
+
+.lp-chap[data-pinned] {
+  height: 200svh;
+  max-width: none;
+  padding: 0;
+}
+
+.lp-chap[data-pinned] .lp-chap-pin {
+  position: sticky;
+  top: 4rem;
+  height: calc(100svh - 4rem);
+  display: flex;
+  align-items: center;
+}
+
+.lp-chap[data-pinned] .lp-chap-body-grid {
+  width: 100%;
+  max-width: 72rem;
+  margin: 0 auto;
+  padding-inline: 1.5rem;
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.2fr);
+  grid-template-rows: auto auto auto auto auto;
+  column-gap: clamp(2rem, 5vw, 4rem);
+  align-items: start;
+}
+
+.lp-chap[data-pinned] .lp-chap-head {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.lp-chap[data-pinned] .lp-chap-step {
+  display: contents;
+}
+
+.lp-chap[data-pinned] .lp-chap-text {
+  grid-column: 1;
+  grid-row: var(--row);
+  margin-top: 2rem;
+  /* Reserve the open step's room so nothing moves as steps open. */
+  border-left-color: color-mix(in srgb, var(--text) calc(var(--k, 0) * 22%), var(--border));
+}
+
+.lp-chap[data-pinned] .lp-chap-text::before {
+  content: "";
+  position: absolute;
+  left: -1px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--text);
+  opacity: var(--k, 0);
+}
+
+.lp-chap[data-pinned] .lp-chap-title {
+  color: color-mix(in srgb, var(--text) calc(var(--k, 0) * 100%), var(--text-muted));
+}
+
+.lp-chap[data-pinned] .lp-chap-body {
+  opacity: var(--k, 0);
+}
+
+.lp-chap[data-pinned] .lp-frame {
+  grid-column: 2;
+  grid-row: 1 / span 5;
+  align-self: center;
+  max-width: none;
+  margin-top: 0;
+  height: min(22rem, calc(100svh - 12rem));
+}
+
+.lp-chap[data-pinned] .lp-chap-more {
+  grid-column: 1;
+  grid-row: 5;
+  margin-top: 2.5rem;
+}
+
+/* ---- Frames: the product's own interface, drawn in live HTML ---- */
+
+.lp-frame {
+  position: relative;
+  max-width: 36rem;
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* The shelf frame leaves a clear strip for its pause button. */
+.lp-frame[data-frame="shelf"] {
+  padding-bottom: 3.5rem;
+}
+
+.lp-pic {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.lp-pic-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+}
+
+.lp-strong {
+  font-weight: 500;
+  color: var(--text);
+}
+
+.lp-muted {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.lp-av {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  background: var(--surface-raised);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.lp-rec-who {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.lp-rec-by,
+.lp-rec-work {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.lp-rec-work {
+  gap: 1rem;
+}
+
+.lp-rec-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 1.0625rem;
+}
+
+.lp-rec-note {
+  font-size: 1.0625rem;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.lp-people {
+  display: flex;
+  flex-direction: column;
+}
+
+.lp-person {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.625rem 0;
+}
+
+.lp-person + .lp-person {
+  border-top: 1px solid var(--border);
+}
+
+/* Typographic covers: a flat block, the title set in Geist. */
+.lp-covers {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--lp-gap, 0.75rem);
+  --lp-gap: 0.75rem;
+}
+
+.lp-cv {
+  display: block;
+  container-type: inline-size;
+  aspect-ratio: 2 / 3;
+  border-radius: 8px;
+  background: var(--cv-bg);
+  color: var(--cv-ink);
+}
+
+.lp-cv-in {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 11cqw;
+}
+
+.lp-cv-title {
+  font-size: 14cqw;
+  font-weight: 500;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+}
+
+.lp-cv-year {
+  font-size: 11cqw;
+  opacity: 0.8;
+}
+
+.lp-cv-sm {
+  width: 3.75rem;
+  flex: none;
+}
+
+/* The pause button for the one loop, bottom-right of its frame. */
+.lp-pause {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: none;
+  width: 32px;
+  min-height: 32px;
+  height: 32px;
+  padding: 0;
+  border-color: var(--border);
+  background: var(--surface-raised);
+  color: var(--text);
+}
+
+/* A 44px hit area around the 32px disc. */
+.lp-pause::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .lp-pause:hover:not(:disabled) {
+    background: color-mix(in oklab, var(--text) 14%, var(--surface-raised));
+  }
+}
+
+/* ---- The card loop: one cover moves one place and settles ----
+   3.2s (--m-cycle). It starts from its finished picture, shows no empty
+   state, and holds for most of the cycle: one move out, one move back,
+   each 290ms, the rest still. Only runs where script has switched it on
+   and the visitor has not asked to reduce motion. */
+
+@keyframes lp-slide-left {
+  0%,
+  24% {
+    translate: 0 0;
+  }
+  28.5% {
+    translate: calc(-50% - var(--lp-gap) / 2) -6px;
+  }
+  33%,
+  74% {
+    translate: calc(-100% - var(--lp-gap)) 0;
+  }
+  78.5% {
+    translate: calc(-50% - var(--lp-gap) / 2) -6px;
+  }
+  83%,
+  100% {
+    translate: 0 0;
+  }
+}
+
+@keyframes lp-slide-right {
+  0%,
+  24% {
+    translate: 0 0;
+  }
+  33%,
+  74% {
+    translate: calc(100% + var(--lp-gap)) 0;
+  }
+  83%,
+  100% {
+    translate: 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .lp-chap[data-loop] .lp-pause {
+    display: grid;
+  }
+
+  .lp-chap[data-loop] .lp-cv-left,
+  .lp-chap[data-loop] .lp-cv-right {
+    animation: var(--m-cycle) var(--ease) infinite;
+  }
+
+  .lp-chap[data-loop] .lp-cv-left {
+    position: relative;
+    z-index: 1;
+    animation-name: lp-slide-left;
+  }
+
+  .lp-chap[data-loop] .lp-cv-right {
+    animation-name: lp-slide-right;
+  }
+
+  .lp-chap[data-paused] .lp-cv-left,
+  .lp-chap[data-paused] .lp-cv-right {
+    animation-play-state: paused;
+  }
+}
+
+/* ---- The five shelves: the page's one light band ---- */
+
+.lp-idx-in {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 5rem 1rem 5rem;
+}
+
+@media (min-width: 640px) {
+  .lp-idx-in {
+    padding-inline: 1.5rem;
+  }
+}
+
+.lp-idx-title {
+  /* Arriving by anchor, the band's top edge lands under the sticky nav. */
+  scroll-margin-top: 9rem;
+  font-size: clamp(1.75rem, 3vw, 2.25rem);
+  line-height: 1.1;
+}
+
+.lp-idx-list {
+  margin-top: 2.5rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--inv-text) 16%, transparent);
+}
+
+.lp-idx-row {
+  display: grid;
+  gap: 0.5rem 2rem;
+  padding: 1.5rem 0;
+  border-top: 1px solid color-mix(in srgb, var(--inv-text) 16%, transparent);
+}
+
+@media (min-width: 768px) {
+  .lp-idx-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 20rem);
+    align-items: center;
+    padding: 1.75rem 0;
+  }
+}
+
+.lp-idx-name {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: clamp(2.5rem, 7vw, 5.5rem);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.045em;
+}
+
+.lp-dot-lg {
+  width: 14px;
+  height: 14px;
+  /* The pale shelf hues need an edge on the light band. */
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--inv-text) 22%, transparent);
+}
+
+.lp-idx-line {
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+@media (min-width: 768px) {
+  .lp-idx-line {
+    text-align: right;
+  }
+}
+
+/* ---- The close ---- */
+
+.lp-close {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 6rem 1rem 7rem;
+}
+
+@media (min-width: 640px) {
+  .lp-close {
+    padding-inline: 1.5rem;
+  }
+}
+
+.lp-close-title {
+  max-width: 13ch;
+  margin-bottom: 2.25rem;
+  font-size: clamp(2.5rem, 7vw, 5.5rem);
+  line-height: 1;
+  letter-spacing: -0.045em;
+  text-wrap: balance;
+}
+
+/* Tall, narrow screens: the room takes the top of the screen, so the
+   hero copy tightens to fit beneath it with both actions above the
+   fold. (Last, so it wins over the rules above.) */
+@media (max-aspect-ratio: 4/5) {
+  .room-hero {
+    padding-bottom: 1.75rem;
+  }
+
+  .room-lede {
+    margin-top: 1rem;
+    font-size: 0.9375rem;
+  }
+
+  .room-ctas {
+    margin-top: 1.25rem;
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+  }
+
+  .room-cta {
+    min-height: 48px;
+    padding: 0 0.875rem;
+    font-size: 0.9375rem;
+    white-space: nowrap;
+  }
+}

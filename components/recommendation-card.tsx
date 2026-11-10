@@ -19,8 +19,8 @@ import {
 import { formatRelativeTime } from "@/lib/relative-time";
 import { useAvatarUrl } from "@/lib/use-avatar";
 
-const iconButtonClass =
-  "flex size-11 items-center justify-center border border-edge text-ink-muted transition-colors duration-200 hover:border-glow hover:text-ink disabled:opacity-40";
+// Quiet icon buttons with 44px targets.
+const iconButtonClass = "btn btn-quiet size-11 shrink-0 px-0";
 
 function Timestamp({ at }: { at: { toDate(): Date } | null }) {
   return (
@@ -40,6 +40,19 @@ function CommentAvatar({ comment }: { comment: CommentDoc }) {
       name={comment.author.displayName}
       alt={`${comment.author.displayName}'s avatar`}
       className="size-8 shrink-0 rounded-full border border-edge bg-surface-raised text-sm"
+    />
+  );
+}
+
+// The recommender's small picture beside the byline; decorative (the
+// handle link next to it carries the name).
+function ByAvatar({ rec }: { rec: RecommendationDoc }) {
+  const src = useAvatarUrl(rec.uid, rec.author.avatarUrl);
+  return (
+    <Avatar
+      src={src}
+      name={rec.author.displayName}
+      className="size-6 shrink-0 rounded-full border border-edge bg-surface-raised text-xs"
     />
   );
 }
@@ -122,175 +135,183 @@ export function RecommendationCard({ rec }: { rec: RecommendationDoc }) {
   }
 
   return (
-    <article className="border border-edge bg-surface p-5 sm:p-6">
-      <div className="flex gap-5">
-        <div className="relative aspect-[2/3] w-20 shrink-0 overflow-hidden border border-edge bg-surface-raised">
+    <article className="card p-6 sm:p-8">
+      <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-5 gap-y-5 sm:gap-x-8">
+        <div className="relative aspect-[2/3] w-20 shrink-0 overflow-hidden rounded-md border border-edge bg-surface-raised sm:row-span-3 sm:w-28">
           <CoverImage
             src={rec.item.imageUrl}
             alt={`${rec.item.title} cover art`}
           />
         </div>
-        <div className="min-w-0 flex-1">
-          <h3 className="font-display text-xl tracking-tight">
+        <div className="min-w-0 self-end sm:self-start">
+          <h3 className="text-xl font-medium leading-tight sm:text-2xl">
             {rec.item.title}
           </h3>
-          <p className="mt-1 font-label text-xs text-ink-muted">
+          <p className="mt-1 text-sm text-ink-muted">
             {[rec.item.year, rec.item.subtitle].filter(Boolean).join(" · ")}
           </p>
-          <p className="mt-3 leading-relaxed text-ink">{rec.note}</p>
-          <p className="mt-3 flex items-center gap-3 text-sm text-ink-muted">
-            <Link
-              href={`/u/${rec.author.handle}`}
-              className="font-label transition-colors duration-200 hover:text-ink"
-            >
-              @{rec.author.handle}
-            </Link>
-            <Timestamp at={rec.createdAt} />
-          </p>
         </div>
-
-        {isAuthor ? (
-          <div className="flex shrink-0 flex-col gap-2">
-            <button
-              type="button"
-              className={iconButtonClass}
-              aria-label={
-                rec.commentsEnabled ? "Turn comments off" : "Turn comments on"
-              }
-              title={
-                rec.commentsEnabled ? "Turn comments off" : "Turn comments on"
-              }
-              onClick={() => void handleToggleComments()}
-            >
-              {rec.commentsEnabled ? (
-                <MessageSquareOff aria-hidden="true" className="size-4" />
-              ) : (
-                <MessageSquare aria-hidden="true" className="size-4" />
-              )}
-            </button>
-            <button
-              type="button"
-              className={iconButtonClass}
-              aria-label={`Delete recommendation of ${rec.item.title}`}
-              onClick={() => confirmRef.current?.showModal()}
-            >
-              <Trash2 aria-hidden="true" className="size-4" />
-            </button>
-            <dialog
-              ref={confirmRef}
-              aria-labelledby={`confirm-delete-${rec.id}`}
-              className="m-auto w-[min(92vw,24rem)] border border-edge bg-surface-raised p-6 text-ink backdrop:bg-bg/70 backdrop:backdrop-blur-sm"
-            >
-              <h4
-                id={`confirm-delete-${rec.id}`}
-                className="font-display text-xl tracking-tight"
-              >
-                Delete this recommendation?
-              </h4>
-              <p className="mt-2 text-sm text-ink-muted">
-                {rec.item.title} comes off your page, along with its
-                comments. This can&rsquo;t be undone.
-              </p>
-              <div className="mt-5 flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => void handleDelete()}
-                  disabled={deleting}
-                  className="flex min-h-11 items-center border border-glow bg-ink px-5 text-sm font-medium text-bg transition-opacity duration-200 hover:opacity-90 disabled:opacity-50"
-                >
-                  Yes, delete
-                </button>
-                <button
-                  type="button"
-                  onClick={() => confirmRef.current?.close()}
-                  className="flex min-h-11 items-center border border-edge px-5 text-sm text-ink-muted transition-colors duration-200 hover:border-glow hover:text-ink"
-                >
-                  Cancel
-                </button>
-              </div>
-            </dialog>
-          </div>
-        ) : null}
+        <p className="col-span-2 text-pretty [overflow-wrap:anywhere] text-lg leading-relaxed text-ink sm:col-span-1 sm:col-start-2 sm:text-xl">
+          {rec.note}
+        </p>
+        <p className="col-span-2 flex items-center gap-2.5 text-sm text-ink-muted sm:col-span-1 sm:col-start-2">
+          <ByAvatar rec={rec} />
+          <Link
+            href={`/u/${rec.author.handle}`}
+            className="link text-ink"
+          >
+            @{rec.author.handle}
+          </Link>
+          <Timestamp at={rec.createdAt} />
+        </p>
       </div>
 
       {actionError ? (
-        <p role="alert" className="mt-4 border-l-2 border-glow pl-3 text-sm">
+        <p role="alert" className="mt-4 border-l-2 border-danger pl-3 text-sm">
           {actionError}
         </p>
       ) : null}
 
-      {rec.commentsEnabled ? (
-        <div className="mt-5 border-t border-edge pt-4">
-          {status === "ready" && profile ? (
-            <form onSubmit={handleComment} className="flex flex-col gap-3">
-              <label
-                htmlFor={`comment-${rec.id}`}
-                className="font-label text-xs uppercase tracking-[0.2em] text-ink-muted"
-              >
-                Add a comment
-              </label>
-              <textarea
-                id={`comment-${rec.id}`}
-                required
-                maxLength={500}
-                rows={2}
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                className="w-full border border-edge bg-bg px-4 py-3 text-ink placeholder:text-ink-muted/60 transition-colors duration-200 focus:border-glow"
-              />
-              {error ? (
-                <p role="alert" className="border-l-2 border-glow pl-3 text-sm">
-                  {error}
-                </p>
-              ) : null}
-              <button
-                type="submit"
-                disabled={busy}
-                className="liquid-glass flex min-h-11 w-fit items-center rounded-full px-6 text-sm text-ink transition-opacity duration-200 hover:opacity-90 disabled:opacity-50"
-              >
-                Post comment
-              </button>
-            </form>
-          ) : status === "signedOut" ? (
-            <p className="text-sm text-ink-muted">
-              <Link href="/login" className="underline underline-offset-4 hover:text-ink">
-                Log in to comment
-              </Link>
-            </p>
-          ) : null}
-
-          {comments.length > 0 ? (
-            <ul className="mt-4 flex list-none flex-col gap-4 p-0">
-              {comments.map((comment) => (
-                <li key={comment.id} className="flex items-start gap-3">
-                  <CommentAvatar comment={comment} />
-                  <div className="min-w-0 flex-1">
-                    <p className="flex items-center gap-3 text-sm text-ink-muted">
-                      <span className="font-label">@{comment.author.handle}</span>
-                      <Timestamp at={comment.createdAt} />
-                    </p>
-                    <p className="mt-1 text-ink">{comment.body}</p>
-                  </div>
-                  {user && (user.uid === comment.uid || isAuthor) ? (
+      <div className="mt-6 border-t border-edge pt-4">
+        {isAuthor || !rec.commentsEnabled ? (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            {rec.commentsEnabled ? (
+              <span aria-hidden="true" />
+            ) : (
+              <p className="text-sm text-ink-muted">
+                Comments are off
+              </p>
+            )}
+            {isAuthor ? (
+              <div className="flex shrink-0 gap-2">
+                <button
+                  type="button"
+                  className={iconButtonClass}
+                  aria-label={
+                    rec.commentsEnabled ? "Turn comments off" : "Turn comments on"
+                  }
+                  title={
+                    rec.commentsEnabled ? "Turn comments off" : "Turn comments on"
+                  }
+                  onClick={() => void handleToggleComments()}
+                >
+                  {rec.commentsEnabled ? (
+                    <MessageSquareOff aria-hidden="true" className="size-4" />
+                  ) : (
+                    <MessageSquare aria-hidden="true" className="size-4" />
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className={iconButtonClass}
+                  aria-label={`Delete recommendation of ${rec.item.title}`}
+                  onClick={() => confirmRef.current?.showModal()}
+                >
+                  <Trash2 aria-hidden="true" className="size-4" />
+                </button>
+                <dialog
+                  ref={confirmRef}
+                  aria-labelledby={`confirm-delete-${rec.id}`}
+                  className="card m-auto w-[min(92vw,26rem)] bg-surface-raised p-7 text-ink backdrop:bg-bg/70 backdrop:backdrop-blur-sm"
+                >
+                  <h4
+                    id={`confirm-delete-${rec.id}`}
+                    className="text-2xl font-medium"
+                  >
+                    Delete this recommendation?
+                  </h4>
+                  <p className="mt-3 text-sm leading-relaxed text-ink-muted">
+                    {rec.item.title} comes off your page, along with its
+                    comments. This can&rsquo;t be undone.
+                  </p>
+                  <div className="mt-6 flex flex-wrap gap-3">
                     <button
                       type="button"
-                      className={iconButtonClass}
-                      aria-label={`Delete comment by @${comment.author.handle}`}
-                      onClick={() => void deleteComment(db, rec.id, comment.id)}
+                      onClick={() => void handleDelete()}
+                      disabled={deleting}
+                      className="btn btn-primary"
                     >
-                      <Trash2 aria-hidden="true" className="size-4" />
+                      Yes, delete
                     </button>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </div>
-      ) : (
-        <p className="mt-5 border-t border-edge pt-4 font-label text-xs uppercase tracking-[0.2em] text-ink-muted">
-          Comments are off
-        </p>
-      )}
+                    <button
+                      type="button"
+                      onClick={() => confirmRef.current?.close()}
+                      className="btn btn-quiet"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </dialog>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
+        {rec.commentsEnabled ? (
+          <div className={isAuthor ? "mt-5" : ""}>
+            {status === "ready" && profile ? (
+              <form onSubmit={handleComment} className="flex flex-col gap-3">
+                <label htmlFor={`comment-${rec.id}`} className="text-sm font-medium">
+                  Add a comment
+                </label>
+                <textarea
+                  id={`comment-${rec.id}`}
+                  required
+                  maxLength={500}
+                  rows={2}
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                  className="field"
+                />
+                {error ? (
+                  <p role="alert" className="border-l-2 border-danger pl-3 text-sm">
+                    {error}
+                  </p>
+                ) : null}
+                <button type="submit" disabled={busy} className="btn w-fit">
+                  Post comment
+                </button>
+              </form>
+            ) : status === "signedOut" ? (
+              <p className="text-sm text-ink-muted">
+                <Link
+                  href="/login"
+                  className="link"
+                >
+                  Log in to comment
+                </Link>
+              </p>
+            ) : null}
+
+            {comments.length > 0 ? (
+              <ul className="mt-5 flex list-none flex-col gap-4 p-0">
+                {comments.map((comment) => (
+                  <li key={comment.id} className="flex items-start gap-3">
+                    <CommentAvatar comment={comment} />
+                    <div className="min-w-0 flex-1">
+                      <p className="flex items-center gap-3 text-sm text-ink-muted">
+                        <span>@{comment.author.handle}</span>
+                        <Timestamp at={comment.createdAt} />
+                      </p>
+                      <p className="mt-1 text-ink">{comment.body}</p>
+                    </div>
+                    {user && (user.uid === comment.uid || isAuthor) ? (
+                      <button
+                        type="button"
+                        className={iconButtonClass}
+                        aria-label={`Delete comment by @${comment.author.handle}`}
+                        onClick={() => void deleteComment(db, rec.id, comment.id)}
+                      >
+                        <Trash2 aria-hidden="true" className="size-4" />
+                      </button>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
     </article>
   );
 }

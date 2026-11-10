@@ -1,19 +1,65 @@
 @import "tailwindcss";
+@import "./styles/backdrop.css";
+@import "./styles/shelf.css";
+@import "./styles/landing.css";
 
 /*
   mediapage design tokens.
-  Monochrome v1. Semantic names so color can be introduced later
-  by remapping tokens, never by touching components.
-  Components must never use raw hex; only these tokens.
+  Palette and type were dealt by the tasteskill dealer (lunar-grey-bronze,
+  Geist): a neutral near-black ground, one muted bronze accent, and one
+  hue per shelf used only as a small mark. Components never use raw hex.
+  The seven core tokens must stay literal hex (tests/unit/tokens.test.ts
+  reads them and pins their contrast).
 */
 :root {
-  --bg: #0a0a0b;
-  --surface: #141416;
-  --surface-raised: #1c1c1f;
-  --text: #f4f4f5;
-  --text-muted: #a1a1aa;
-  --border: #2a2a2e;
-  --glow: #ffffff;
+  --bg: #111111;
+  --surface: #1c1c1c;
+  --surface-raised: #242424;
+  --text: #f2f2f2;
+  --text-muted: #9b9b9b;
+  --border: #303030;
+  --glow: #a08672;
+
+  /* The one accent, and the ink set on top of it. */
+  --accent: #a08672;
+  --accent-deep: #8a7361;
+  --accent-ink: #111111;
+  --danger: #e5796b;
+
+  /* The inverse band: one light section a page may use for contrast. */
+  --inv-bg: #f2f2f2;
+  --inv-surface: #e0e0e0;
+  --inv-text: #111111;
+  --inv-muted: #5c5c5c;
+
+  /* One hue per shelf. A dot or a 2px rule, never a fill behind text. */
+  --shelf-movies: #e0624f;
+  --shelf-shows: #5a9fe0;
+  --shelf-music: #58b98c;
+  --shelf-games: #e06aa5;
+  --shelf-books: #d9c79a;
+
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+
+  /* Motion: one UI ease-out, one entrance curve, no overshoot. */
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-enter: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
+  --m-in: 150ms;
+  --m-out: 120ms;
+  --m-press: 90ms;
+  --m-panel: 200ms;
+  --m-slide: 240ms;
+  --m-image: 600ms;
+  --m-image-out: 400ms;
+  --m-cycle: 3.2s;
+  --dur-fast: 120ms;
+  --dur: 150ms;
+  --dur-slow: 520ms;
+  --lip: 0px;
 }
 
 @theme inline {
@@ -24,8 +70,22 @@
   --color-ink-muted: var(--text-muted);
   --color-edge: var(--border);
   --color-glow: var(--glow);
-  --font-display: var(--font-display-var);
-  --font-body: var(--font-body-var);
+  --color-accent: var(--accent);
+  --color-accent-deep: var(--accent-deep);
+  --color-accent-ink: var(--accent-ink);
+  --color-danger: var(--danger);
+  --color-inv-bg: var(--inv-bg);
+  --color-inv-surface: var(--inv-surface);
+  --color-inv-ink: var(--inv-text);
+  --color-inv-muted: var(--inv-muted);
+  --color-shelf-movies: var(--shelf-movies);
+  --color-shelf-shows: var(--shelf-shows);
+  --color-shelf-music: var(--shelf-music);
+  --color-shelf-games: var(--shelf-games);
+  --color-shelf-books: var(--shelf-books);
+  --font-display: var(--font-geist-var);
+  --font-serif: var(--font-geist-var);
+  --font-body: var(--font-geist-var);
   --font-label: var(--font-label-var);
   --font-wordmark: var(--font-wordmark-var);
 }
@@ -33,9 +93,16 @@
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: var(--font-body-var), ui-sans-serif, sans-serif;
+  font-family: var(--font-geist-var), ui-sans-serif, sans-serif;
   font-size: 16px;
   line-height: 1.5;
+}
+
+h1,
+h2,
+h3 {
+  font-weight: 500;
+  letter-spacing: -0.035em;
 }
 
 ::selection {
@@ -43,1346 +110,257 @@ body {
   color: var(--bg);
 }
 
-/* Focus is never removed, only styled. */
+/* Focus: a 2px ring in the action colour, drawn at once. */
 :focus-visible {
   outline: 2px solid var(--glow);
-  outline-offset: 3px;
-  border-radius: 2px;
+  outline-offset: 2px;
 }
 
-/* Atmospheric grain over the whole page. Purely decorative. */
-.grain {
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  pointer-events: none;
-  opacity: 0.05;
-  mix-blend-mode: overlay;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-size: 160px 160px;
-}
-
-/* Glass layer for nav and modals. */
+/* Translucent layer for the sticky nav and dialog backdrops only. */
 .glass {
-  background: color-mix(in srgb, var(--bg) 72%, transparent);
-  backdrop-filter: blur(14px) saturate(1.1);
-  -webkit-backdrop-filter: blur(14px) saturate(1.1);
+  background: color-mix(in srgb, var(--bg) 86%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
-/* ---- The landing: a dark library hall ----
-   Tiered rows of book spines built from interfering repeating
-   gradients, a breathing light shaft, drifting dust, and a vignette
-   that pools the hero in darkness. Decorative; fully inert under
-   reduced motion. */
-
-.library-row {
-  position: absolute;
-  left: -8%;
-  right: -8%;
-  pointer-events: none;
-  /* The one sanctioned splash of color in an otherwise monochrome
-     app: muted, dim "aged book" spine tones, confined to this
-     decorative backdrop. Vertical bands are spines; the 2px dark
-     gaps are the shadow between books; the top layer is library
-     light catching the spine tops. */
-  background-image:
-    linear-gradient(
-      to bottom,
-      color-mix(in srgb, var(--glow) 12%, transparent) 0,
-      transparent 16%
-    ),
-    repeating-linear-gradient(
-      90deg,
-      #0c0c0f 0 2px,
-      #5b2b2e 2px 22px,
-      #0c0c0f 22px 24px,
-      #4a3b28 24px 41px,
-      #0c0c0f 41px 43px,
-      #243a2f 43px 67px,
-      #0c0c0f 67px 69px,
-      #2a3550 69px 88px,
-      #0c0c0f 88px 90px,
-      #5a4520 90px 112px,
-      #0c0c0f 112px 114px,
-      #25403f 114px 132px,
-      #0c0c0f 132px 134px,
-      #3a2c44 134px 158px,
-      #0c0c0f 158px 160px,
-      #5a3326 160px 180px,
-      #0c0c0f 180px 182px
-    );
-  border-bottom: 2px solid color-mix(in srgb, var(--glow) 14%, var(--surface-raised));
-  box-shadow: 0 10px 22px -8px rgb(0 0 0 / 0.75);
-}
-
-.library-row-near {
-  bottom: 0;
-  height: 24vh;
-  opacity: 0.66;
-}
-
-.library-row-mid {
-  bottom: 26vh;
-  height: 15vh;
-  opacity: 0.42;
-  filter: blur(1px);
-}
-
-.library-row-far {
-  bottom: 43vh;
-  height: 9vh;
-  opacity: 0.24;
-  filter: blur(2px);
-}
-
-.light-shaft {
-  position: absolute;
-  top: -18%;
-  left: 16%;
-  width: 36%;
-  height: 92%;
-  pointer-events: none;
-  transform: rotate(14deg);
-  background: linear-gradient(
-    to bottom,
-    color-mix(in srgb, var(--glow) 9%, transparent),
-    transparent 70%
-  );
-  filter: blur(18px);
-  opacity: 0.5;
-}
-
-.mote {
-  position: absolute;
-  width: 3px;
-  height: 3px;
-  border-radius: 9999px;
-  pointer-events: none;
-  background: color-mix(in srgb, var(--glow) 45%, transparent);
-  filter: blur(0.5px);
-  opacity: 0.18;
-}
-
-.library-vignette {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(
-      ellipse at 50% 32%,
-      transparent 0%,
-      color-mix(in srgb, var(--bg) 62%, transparent) 62%,
-      var(--bg) 100%
-    ),
-    linear-gradient(to bottom, transparent 70%, var(--bg) 99%);
-}
-
-/* The ladder the explorer climbs: two muted rails with rungs,
-   reaching from the floor up to the middle shelf. */
-.library-ladder {
-  position: absolute;
-  left: 57%;
-  bottom: 7%;
-  width: 26px;
-  height: 34vh;
-  pointer-events: none;
-  opacity: 0.5;
-  background:
-    linear-gradient(90deg, #4a3b28 0 3px, transparent 3px) 0 0 / 100% 100%,
-    linear-gradient(270deg, #4a3b28 0 3px, transparent 3px) 0 0 / 100% 100%,
-    repeating-linear-gradient(
-      0deg,
-      transparent 0 14px,
-      #4a3b28 14px 17px
-    );
-  filter: blur(0.4px);
-}
-
-/* The 16-bit librarian. Base position (no animation) stands at the
-   ladder, so reduced-motion users see them resting there. */
-.explorer {
-  position: absolute;
-  left: 56.5%;
-  bottom: 7%;
-  z-index: 2;
-  width: clamp(34px, 3.8vw, 50px);
-  pointer-events: none;
-  opacity: 0.95;
-  /* Drop-shadow lives on the container, not the <svg>, so it doesn't
-     define a filter region that re-clips the book once the sprite is
-     allowed to overflow its viewBox. */
-  filter: drop-shadow(0 3px 3px rgb(0 0 0 / 0.6));
-}
-
-.explorer-sprite {
-  display: block;
-  width: 100%;
-  height: auto;
-  /* The carried book swings past the right edge of the 16-unit viewBox;
-     without this it would be clipped to a sliver. */
-  overflow: visible;
-}
-
-.explorer-leg,
-.explorer-arm {
-  transform-box: fill-box;
-  transform-origin: 50% 0;
-}
-
-.explorer-book {
-  opacity: 0;
-}
-
-/* The tome: the pulled book, opened large, whose pages turn through the
-   five shelves. Hidden at base so reduced-motion users see only the
-   resting librarian. Pixel-flat: hard edges, no rounding. Palette
-   reuses the spine/page tones already defined in this file. */
-.library-tome {
-  /* Anchored off the copy block's center so it clears the centered
-     paragraph (672px) and CTA row at any viewport ≥ ~910px; below
-     that the section's overflow clips it away — it's decorative. */
-  position: absolute;
-  left: calc(50% + 345px);
-  bottom: 24%;
-  z-index: 2;
-  width: clamp(112px, 12vw, 160px);
-  pointer-events: none;
-  opacity: 0;
-  perspective: 620px;
-  filter: drop-shadow(0 6px 10px rgb(0 0 0 / 0.6));
-}
-
-.tome-book {
-  background: #5b2b2e;
-  padding: 4px 4px 7px 4px;
-}
-
-.tome-pages {
-  position: relative;
-  height: 100px;
-  background: #f0e7d4;
-  overflow: hidden;
-}
-
-/* Center gutter: stitch line plus soft fold shading. */
-.tome-pages::before {
-  content: "";
-  position: absolute;
-  inset: 0 auto 0 50%;
-  width: 2px;
-  transform: translateX(-1px);
-  background: #cebf9f;
-  z-index: 3;
-}
-
-.tome-pages::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  pointer-events: none;
-  background: linear-gradient(
-    90deg,
-    transparent 42%,
-    rgb(48 30 14 / 0.14) 50%,
-    transparent 58%
-  );
-}
-
-/* Page-block edges peeking below the pages, above the cover lip. */
-.tome-edge {
-  height: 3px;
-  background: repeating-linear-gradient(90deg, #f0e7d4 0 3px, #cebf9f 3px 5px);
-}
-
-/* One leaf per category: label on the verso, motif on the recto. */
-.tome-leaf {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  opacity: 0;
-  transform: scale(0.88);
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  align-items: center;
-  justify-items: center;
-}
-
-.tome-label {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 7px;
-}
-
-.tome-index {
-  font-family: var(--font-label-var), monospace;
-  font-size: 8px;
-  letter-spacing: 0.18em;
-  color: #a8855f;
-}
-
-.tome-name {
-  font-family: var(--font-label-var), monospace;
-  font-size: 11px;
-  letter-spacing: 0.14em;
-  color: #3a2c20;
-  text-transform: uppercase;
-  text-align: center;
-  line-height: 1.3;
-}
-
-/* The turning page: recto-sized, hinged at the gutter. */
-.tome-flip-page {
-  position: absolute;
-  inset: 0 0 0 50%;
-  z-index: 4;
-  opacity: 0;
-  transform-origin: left center;
-  backface-visibility: hidden;
-  background: linear-gradient(90deg, #e6d9bd, #f0e7d4 22%);
-  box-shadow: inset -1px 0 0 #cebf9f;
-}
-
-/* The explorer's journey: retimed to 50s (from 26s) to make room for
-   the reading/page-turn sequence — walk in, climb rung by rung, pull
-   the book, climb down, stand and read while the tome turns its five
-   chapters, then walk off. */
-@keyframes explorer-journey {
-  0% {
-    transform: translate(-64vw, 0);
-    animation-timing-function: linear;
-  }
-  16% {
-    transform: translate(0, 0);
-    animation-timing-function: ease-in-out;
-  }
-  /* Rung-by-rung climb: micro-holds between pulls read as hands
-     regripping; same on the way down, with a small hop off the last
-     rung (ease-in drop into 46.4%). */
-  19% { transform: translate(0, 0); animation-timing-function: ease-in-out; }
-  20.8% { transform: translate(0, -6vh); animation-timing-function: ease-in-out; }
-  21.6% { transform: translate(0, -6vh); animation-timing-function: ease-in-out; }
-  23.4% { transform: translate(0, -12vh); animation-timing-function: ease-in-out; }
-  24.2% { transform: translate(0, -12vh); animation-timing-function: ease-in-out; }
-  26% { transform: translate(0, -17vh); animation-timing-function: ease-in-out; }
-  26.8% { transform: translate(0, -17vh); animation-timing-function: ease-in-out; }
-  28.6% { transform: translate(0, -22vh); animation-timing-function: ease-in-out; }
-  29.2% { transform: translate(0, -22vh); animation-timing-function: ease-in-out; }
-  30% { transform: translate(0, -27vh); animation-timing-function: ease-in-out; }
-  36% { transform: translate(0, -27vh); animation-timing-function: ease-in-out; }
-  38% { transform: translate(0, -21.5vh); animation-timing-function: ease-in-out; }
-  38.8% { transform: translate(0, -21.5vh); animation-timing-function: ease-in-out; }
-  40.6% { transform: translate(0, -16vh); animation-timing-function: ease-in-out; }
-  41.4% { transform: translate(0, -16vh); animation-timing-function: ease-in-out; }
-  43.2% { transform: translate(0, -10.5vh); animation-timing-function: ease-in-out; }
-  44% { transform: translate(0, -10.5vh); animation-timing-function: ease-in-out; }
-  45.4% { transform: translate(0, -5vh); animation-timing-function: ease-in; }
-  46.4% { transform: translate(0, 0); animation-timing-function: ease-in-out; }
-  90% {
-    transform: translate(0, 0);
-    animation-timing-function: linear;
-  }
-  100% {
-    transform: translate(46vw, 0);
-  }
-}
-
-/* A gentle dip mid-stride. Smooth, not stepped, so the walk reads as
-   fluid rather than juddery. */
-@keyframes explorer-bob {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-1.5px);
-  }
-}
-
-/* Opposite-phase strides that swing smoothly. transform-origin sits at
-   the hip (top of the rect). */
-@keyframes explorer-leg-front {
-  0% {
-    transform: rotate(22deg);
-  }
-  50% {
-    transform: rotate(-22deg);
-  }
-  100% {
-    transform: rotate(22deg);
-  }
-}
-
-@keyframes explorer-leg-back {
-  0% {
-    transform: rotate(-22deg);
-  }
-  50% {
-    transform: rotate(22deg);
-  }
-  100% {
-    transform: rotate(-22deg);
-  }
-}
-
-/* The trailing arm swings to balance the gait. */
-@keyframes explorer-arm-back {
-  0% {
-    transform: rotate(-20deg);
-  }
-  50% {
-    transform: rotate(20deg);
-  }
-  100% {
-    transform: rotate(-20deg);
-  }
-}
-
-/* The lead arm performs the whole book routine on the journey's
-   timeline: it hangs while walking and climbing, shoots up to the high
-   shelf at the top, grabs a book, pulls it down to read, then carries
-   it while climbing down and walking off — lowering it again before the
-   loop restarts so the figure re-enters empty-handed. */
-@keyframes explorer-arm-reach {
-  /* Wind-up (dip to 28deg) before the shoot-up, overshoot to -164deg,
-     settle at -158deg — anticipation + follow-through. */
-  0%,
-  27.4% {
-    transform: rotate(10deg);
-  }
-  28.8% {
-    transform: rotate(28deg);
-  }
-  31% {
-    transform: rotate(-150deg);
-  }
-  31.6% {
-    transform: rotate(-164deg);
-  }
-  33%,
-  36% {
-    transform: rotate(-158deg);
-  }
-  42%,
-  88% {
-    transform: rotate(-102deg);
-  }
-  96%,
-  100% {
-    transform: rotate(10deg);
-  }
-}
-
-/* The book is hidden until it is lifted off the shelf, then stays in
-   hand through the read and the walk-off, fading as the figure exits.
-   Retimed to the 50s journey. */
-@keyframes explorer-book-grab {
-  0%,
-  32% {
-    opacity: 0;
-  }
-  35%,
-  90% {
-    opacity: 1;
-  }
-  96%,
-  100% {
-    opacity: 0;
-  }
-}
-
-/* The tome rises in once the librarian is back on the floor, holds
-   through the five chapter-turns, and settles away before the
-   walk-off. */
-@keyframes tome-appear {
-  0%,
-  46% {
-    opacity: 0;
-    transform: translateY(12px) scale(0.9);
-  }
-  49% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-  85.5% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-  88.5% {
-    opacity: 0;
-    transform: translateY(8px) scale(0.94);
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(8px) scale(0.94);
-  }
-}
-
-/* A slow hover so the tome is never frozen between turns. */
-@keyframes tome-float {
-  from {
-    transform: translateY(0);
-  }
-  to {
-    transform: translateY(-4px);
-  }
-}
-
-/* Five page-lifts on the master timeline — one per chapter, at
-   50 / 57.2 / 64.4 / 71.6 / 78.8%. Each lift lasts 0.7s (1.4%): the
-   page peels from the gutter and fades as it passes vertical,
-   revealing the next leaf beneath. */
-@keyframes tome-flip {
-  0%, 49.9% { transform: rotateY(0deg); opacity: 0; }
-  50% { transform: rotateY(0deg); opacity: 1; }
-  50.9% { transform: rotateY(-104deg); opacity: 1; }
-  51.4% { transform: rotateY(-164deg); opacity: 0; }
-  51.5%, 57.1% { transform: rotateY(0deg); opacity: 0; }
-  57.2% { transform: rotateY(0deg); opacity: 1; }
-  58.1% { transform: rotateY(-104deg); opacity: 1; }
-  58.6% { transform: rotateY(-164deg); opacity: 0; }
-  58.7%, 64.3% { transform: rotateY(0deg); opacity: 0; }
-  64.4% { transform: rotateY(0deg); opacity: 1; }
-  65.3% { transform: rotateY(-104deg); opacity: 1; }
-  65.8% { transform: rotateY(-164deg); opacity: 0; }
-  65.9%, 71.5% { transform: rotateY(0deg); opacity: 0; }
-  71.6% { transform: rotateY(0deg); opacity: 1; }
-  72.5% { transform: rotateY(-104deg); opacity: 1; }
-  73% { transform: rotateY(-164deg); opacity: 0; }
-  73.1%, 78.7% { transform: rotateY(0deg); opacity: 0; }
-  78.8% { transform: rotateY(0deg); opacity: 1; }
-  79.7% { transform: rotateY(-104deg); opacity: 1; }
-  80.2% { transform: rotateY(-164deg); opacity: 0; }
-  80.3%, 100% { transform: rotateY(0deg); opacity: 0; }
-}
-
-/* One visibility window per leaf, each opening as its page-lift passes
-   and closing under the next. The motif scales in with the leaf — the
-   chapter-turn beat. */
-@keyframes tome-leaf-1 {
-  0%, 50.4% { opacity: 0; transform: scale(0.88); }
-  51.8% { opacity: 1; transform: scale(1); }
-  57.6% { opacity: 1; transform: scale(1); }
-  58.6% { opacity: 0; transform: scale(0.94); }
-  100% { opacity: 0; transform: scale(0.94); }
-}
-
-@keyframes tome-leaf-2 {
-  0%, 57.6% { opacity: 0; transform: scale(0.88); }
-  59% { opacity: 1; transform: scale(1); }
-  64.8% { opacity: 1; transform: scale(1); }
-  65.8% { opacity: 0; transform: scale(0.94); }
-  100% { opacity: 0; transform: scale(0.94); }
-}
-
-@keyframes tome-leaf-3 {
-  0%, 64.8% { opacity: 0; transform: scale(0.88); }
-  66.2% { opacity: 1; transform: scale(1); }
-  72% { opacity: 1; transform: scale(1); }
-  73% { opacity: 0; transform: scale(0.94); }
-  100% { opacity: 0; transform: scale(0.94); }
-}
-
-@keyframes tome-leaf-4 {
-  0%, 72% { opacity: 0; transform: scale(0.88); }
-  73.4% { opacity: 1; transform: scale(1); }
-  79.2% { opacity: 1; transform: scale(1); }
-  80.2% { opacity: 0; transform: scale(0.94); }
-  100% { opacity: 0; transform: scale(0.94); }
-}
-
-@keyframes tome-leaf-5 {
-  0%, 79.2% { opacity: 0; transform: scale(0.88); }
-  80.6% { opacity: 1; transform: scale(1); }
-  85.2% { opacity: 1; transform: scale(1); }
-  86.6% { opacity: 0; transform: scale(0.94); }
-  100% { opacity: 0; transform: scale(0.94); }
-}
-
-@keyframes library-drift {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-48px);
-  }
-}
-
-@keyframes shaft-breathe {
-  0%,
-  100% {
-    opacity: 0.32;
-  }
-  50% {
-    opacity: 0.6;
-  }
-}
-
-@keyframes mote-float {
-  0% {
-    transform: translate3d(0, 0, 0);
-    opacity: 0;
-  }
-  12% {
-    opacity: 0.5;
-  }
-  88% {
-    opacity: 0.3;
-  }
-  100% {
-    transform: translate3d(28px, -44vh, 0);
-    opacity: 0;
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .library-row-near {
-    animation: library-drift 80s ease-in-out infinite alternate;
+/* ---- Shared primitives ----
+   One button pair, one card, one field, one link look. In the
+   components layer so Tailwind utilities can override them. */
+@layer components {
+  /* A small plain label. Sentence case, never tracked capitals. */
+  .eyebrow {
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    color: var(--text-muted);
   }
 
-  .library-row-mid {
-    animation: library-drift 110s ease-in-out infinite alternate-reverse;
-  }
-
-  .library-row-far {
-    animation: library-drift 140s ease-in-out infinite alternate;
-  }
-
-  .light-shaft {
-    animation: shaft-breathe 11s ease-in-out infinite;
-  }
-
-  .mote {
-    /* Per-mote duration and delay arrive inline. */
-    animation-name: mote-float;
-    animation-timing-function: linear;
-    animation-iteration-count: infinite;
-  }
-
-  /* The explorer's journey: one slow 50s loop, eased per segment so the
-     figure glides in, climbs rung by rung, pauses at the top to pull a
-     book off the shelf, reads while the tome turns its five chapters,
-     then carries the book off. The limbs swing smoothly — no stepping —
-     so the motion is fluid against the pixel sprite, and the lead arm +
-     book + tome all run on the journey's own 50s timeline so the grab,
-     the reading, and the page-lifts never drift apart. */
-  .explorer {
-    animation: explorer-journey 50s infinite;
-    will-change: transform;
-  }
-
-  .explorer-bob {
-    animation: explorer-bob 0.35s ease-in-out infinite;
-  }
-
-  .explorer-leg-front {
-    animation: explorer-leg-front 0.7s ease-in-out infinite;
-  }
-
-  .explorer-leg-back {
-    animation: explorer-leg-back 0.7s ease-in-out infinite;
-  }
-
-  .explorer-arm-back {
-    animation: explorer-arm-back 0.7s ease-in-out infinite;
-  }
-
-  .explorer-arm-reach {
-    animation: explorer-arm-reach 50s ease-in-out infinite;
-  }
-
-  .explorer-book {
-    animation: explorer-book-grab 50s linear infinite;
-  }
-
-  .library-tome {
-    animation: tome-appear 50s ease-in-out infinite;
-    will-change: transform, opacity;
-  }
-
-  .tome-float {
-    animation: tome-float 6.5s ease-in-out infinite alternate;
-  }
-
-  .tome-flip-page {
-    animation: tome-flip 50s linear infinite;
-  }
-
-  .tome-leaf-1 { animation: tome-leaf-1 50s ease-out infinite; }
-  .tome-leaf-2 { animation: tome-leaf-2 50s ease-out infinite; }
-  .tome-leaf-3 { animation: tome-leaf-3 50s ease-out infinite; }
-  .tome-leaf-4 { animation: tome-leaf-4 50s ease-out infinite; }
-  .tome-leaf-5 { animation: tome-leaf-5 50s ease-out infinite; }
-
-  /* Fluidity pass + ambience characters. */
-  .explorer-sprite { animation: explorer-sway 0.7s ease-in-out infinite; }
-  .explorer-arm-front { animation: explorer-arm-front 0.7s ease-in-out infinite; }
-  .walker { animation: walker-journey 64s infinite; will-change: transform; }
-  .walker-face { animation: pace-face 64s linear infinite; }
-  .strider { animation: strider-journey 110s infinite; will-change: transform; }
-  .strider-face { animation: pace-face 110s linear infinite; }
-}
-
-/* ---- Library ambience ----
-   A pixel staircase to the mid walkway, the returns clerk who climbs
-   it, and a distant silhouette pacing the upper aisle. Stairs stay on
-   monochrome tokens like the ladder; the clerk reuses the librarian
-   /spine palette; the silhouette is a single glow-mix tone via
-   currentColor, rendered before the vignette (see LibraryBackdrop) so
-   it reads as a hazy background figure. */
-.library-stairs {
-  position: absolute;
-  left: 0;
-  bottom: 7%;
-  width: 6vw;
-  height: 18vh;
-  z-index: 1;
-  pointer-events: none;
-  opacity: 0.55;
-  filter: blur(0.3px);
-}
-
-/* Stepped body: lit nosing along each tread + right riser faces, made
-   by offsetting a darker copy of the same stepped shape. */
-.stairs-steps {
-  position: absolute;
-  inset: 0;
-  clip-path: polygon(
-    0 0, 16.7% 0, 16.7% 16.7%, 33.4% 16.7%, 33.4% 33.4%, 50% 33.4%,
-    50% 50%, 66.7% 50%, 66.7% 66.7%, 83.4% 66.7%, 83.4% 83.4%,
-    100% 83.4%, 100% 100%, 0 100%
-  );
-  background: color-mix(in srgb, var(--glow) 20%, var(--surface-raised));
-}
-
-.stairs-steps::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  transform: translate(-2px, 3px);
-  clip-path: polygon(
-    0 0, 16.7% 0, 16.7% 16.7%, 33.4% 16.7%, 33.4% 33.4%, 50% 33.4%,
-    50% 50%, 66.7% 50%, 66.7% 66.7%, 83.4% 66.7%, 83.4% 83.4%,
-    100% 83.4%, 100% 100%, 0 100%
-  );
-  background: linear-gradient(
-    to bottom,
-    color-mix(in srgb, var(--glow) 7%, var(--surface-raised)),
-    var(--surface-raised) 70%
-  );
-}
-
-/* Banister: stepped handrail band (::before) + posts rising from each
-   tread (::after), in the ladder's wood tone. */
-.stairs-rail {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  top: -40%;
-}
-
-.stairs-rail::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: #4a3b28;
-  clip-path: polygon(
-    0 8.6%, 16.7% 8.6%, 16.7% 20.5%, 33.4% 20.5%, 33.4% 32.4%,
-    50% 32.4%, 50% 44.3%, 66.7% 44.3%, 66.7% 56.2%, 83.4% 56.2%,
-    83.4% 68.1%, 100% 68.1%, 100% 71.1%, 83.4% 71.1%, 83.4% 59.2%,
-    66.7% 59.2%, 66.7% 47.3%, 50% 47.3%, 50% 35.4%, 33.4% 35.4%,
-    33.4% 23.5%, 16.7% 23.5%, 16.7% 11.6%, 0 11.6%
-  );
-}
-
-.stairs-rail::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(
-    90deg,
-    transparent 0 6.5%,
-    #4a3b28 6.5% 9.5%,
-    transparent 9.5% 16.667%
-  );
-  clip-path: polygon(
-    0 11.6%, 16.7% 11.6%, 16.7% 23.5%, 33.4% 23.5%, 33.4% 35.4%,
-    50% 35.4%, 50% 47.3%, 66.7% 47.3%, 66.7% 59.2%, 83.4% 59.2%,
-    83.4% 71.1%, 100% 71.1%, 100% 88.1%, 83.4% 88.1%, 83.4% 76.2%,
-    66.7% 76.2%, 66.7% 64.3%, 50% 64.3%, 50% 52.4%, 33.4% 52.4%,
-    33.4% 40.5%, 16.7% 40.5%, 16.7% 28.6%, 0 28.6%
-  );
-}
-
-.walker {
-  position: absolute;
-  left: 6%;
-  bottom: 7%;
-  z-index: 1;
-  width: clamp(24px, 2.8vw, 38px);
-  pointer-events: none;
-  opacity: 0.85;
-  filter: drop-shadow(0 2px 2px rgb(0 0 0 / 0.55));
-}
-
-/* Rendered BEFORE .library-vignette in LibraryBackdrop so the vignette
-   dims it into a hazy background silhouette. */
-.strider {
-  position: absolute;
-  left: 70%;
-  bottom: 43.5vh;
-  z-index: 0;
-  width: 18px;
-  pointer-events: none;
-  opacity: 0.32;
-  color: color-mix(in srgb, var(--glow) 55%, transparent);
-  filter: blur(0.4px);
-}
-
-@keyframes explorer-arm-front {
-  0% { transform: rotate(20deg); }
-  50% { transform: rotate(-20deg); }
-  100% { transform: rotate(20deg); }
-}
-
-/* Subtle body roll layered over the bob for a looser gait. */
-@keyframes explorer-sway {
-  0%, 100% { transform: rotate(-1.4deg); }
-  50% { transform: rotate(1.4deg); }
-}
-
-/* The returns clerk: in from the right with a stack of books, up the
-   stairs step by step (micro-holds between treads), delivers
-   upstairs, back down, exits. Palindrome loop — no on-screen
-   teleports; the facing flip happens offscreen at 50%. */
-@keyframes walker-journey {
-  0% { transform: translate(96vw, 0); animation-timing-function: linear; }
-  20% { transform: translate(0, 0); animation-timing-function: ease-in-out; }
-  23% { transform: translate(0, 0); animation-timing-function: ease-in-out; }
-  25% { transform: translate(-1.2vw, -3.6vh); animation-timing-function: ease-in-out; }
-  25.6% { transform: translate(-1.2vw, -3.6vh); animation-timing-function: ease-in-out; }
-  27.6% { transform: translate(-2.4vw, -7.2vh); animation-timing-function: ease-in-out; }
-  28.2% { transform: translate(-2.4vw, -7.2vh); animation-timing-function: ease-in-out; }
-  30.2% { transform: translate(-3.6vw, -10.8vh); animation-timing-function: ease-in-out; }
-  30.8% { transform: translate(-3.6vw, -10.8vh); animation-timing-function: ease-in-out; }
-  32.8% { transform: translate(-4.8vw, -14.4vh); animation-timing-function: ease-in-out; }
-  33.4% { transform: translate(-4.8vw, -14.4vh); animation-timing-function: ease-in-out; }
-  35.4% { transform: translate(-6vw, -18vh); animation-timing-function: ease-in-out; }
-  38.5% { transform: translate(-6vw, -18vh); animation-timing-function: linear; }
-  46% { transform: translate(-18vw, -18vh); animation-timing-function: linear; }
-  54% { transform: translate(-18vw, -18vh); animation-timing-function: linear; }
-  61.5% { transform: translate(-6vw, -18vh); animation-timing-function: ease-in-out; }
-  63% { transform: translate(-6vw, -18vh); animation-timing-function: ease-in-out; }
-  65% { transform: translate(-4.8vw, -14.4vh); animation-timing-function: ease-in-out; }
-  65.6% { transform: translate(-4.8vw, -14.4vh); animation-timing-function: ease-in-out; }
-  67.6% { transform: translate(-3.6vw, -10.8vh); animation-timing-function: ease-in-out; }
-  68.2% { transform: translate(-3.6vw, -10.8vh); animation-timing-function: ease-in-out; }
-  70.2% { transform: translate(-2.4vw, -7.2vh); animation-timing-function: ease-in-out; }
-  70.8% { transform: translate(-2.4vw, -7.2vh); animation-timing-function: ease-in-out; }
-  72.8% { transform: translate(-1.2vw, -3.6vh); animation-timing-function: ease-in-out; }
-  73.4% { transform: translate(-1.2vw, -3.6vh); animation-timing-function: ease-in-out; }
-  75.4% { transform: translate(0, 0); animation-timing-function: ease-in-out; }
-  77% { transform: translate(0, 0); animation-timing-function: linear; }
-  100% { transform: translate(96vw, 0); }
-}
-
-/* Shared facing flip: outbound leg faces left, return faces right. */
-@keyframes pace-face {
-  0%, 49.9% { transform: scaleX(-1); }
-  50%, 100% { transform: scaleX(1); }
-}
-
-/* Distant silhouette pacing the upper aisle, there and back. */
-@keyframes strider-journey {
-  0% { transform: translate(32vw, 0); animation-timing-function: linear; }
-  46% { transform: translate(-78vw, 0); animation-timing-function: linear; }
-  54% { transform: translate(-78vw, 0); animation-timing-function: linear; }
-  100% { transform: translate(32vw, 0); }
-}
-
-/* Liquid glass call to action, in glow tokens. */
-.liquid-glass {
-  position: relative;
-  overflow: hidden;
-  background: color-mix(in srgb, var(--glow) 3%, transparent);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  box-shadow:
-    inset 0 1px 1px color-mix(in srgb, var(--glow) 16%, transparent),
-    0 14px 30px -14px rgb(0 0 0 / 0.8);
-}
-
-.liquid-glass::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1.4px;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--glow) 45%, transparent) 0%,
-    color-mix(in srgb, var(--glow) 15%, transparent) 20%,
-    transparent 40%,
-    transparent 60%,
-    color-mix(in srgb, var(--glow) 15%, transparent) 80%,
-    color-mix(in srgb, var(--glow) 45%, transparent) 100%
-  );
-  -webkit-mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-}
-
-/* ---- The physical shelf ----
-   Cases stand on a plank; hovering eases one toward you. All of it
-   is decorative depth: reduced motion strips every transform. */
-
-.shelf-case {
-  position: relative;
-  z-index: 10;
-}
-
-/* Contact shadow where the case meets the plank. */
-.shelf-case::after {
-  content: "";
-  position: absolute;
-  left: 8%;
-  right: 8%;
-  bottom: -8px;
-  height: 10px;
-  pointer-events: none;
-  border-radius: 50%;
-  background: radial-gradient(
-    ellipse at center,
-    rgb(0 0 0 / 0.6),
-    transparent 70%
-  );
-  filter: blur(3px);
-}
-
-/* Case and contact shadow move as one paired unit (same easing and
-   duration); the transitions only exist when motion is welcome. */
-@media (prefers-reduced-motion: no-preference) {
-  .shelf-case {
-    transition: transform 200ms ease;
-    will-change: transform;
-  }
-
-  .shelf-case::after {
+  .btn,
+  .liquid-glass {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 44px;
+    padding: 0 1.25rem;
+    border-radius: 9999px;
+    border: 1px solid transparent;
+    background: color-mix(in oklab, var(--text) 8%, var(--bg));
+    color: var(--text);
+    font-weight: 500;
+    font-size: 0.9375rem;
+    line-height: 1;
+    white-space: nowrap;
     transition:
-      transform 200ms ease,
-      opacity 200ms ease;
+      transform var(--m-out) var(--ease),
+      background-color var(--m-out) var(--ease),
+      border-color var(--m-out) var(--ease),
+      color var(--m-out) var(--ease);
   }
 
-  /* Keyboard focus lifts the case regardless of pointer type. */
-  .shelf-case:focus-within {
-    transform: perspective(900px) translateY(-10px) rotateX(4deg) scale(1.02);
-    z-index: 20;
+  .btn-primary {
+    background: var(--accent);
+    color: var(--accent-ink);
   }
 
-  .shelf-case:focus-within::after {
-    transform: translateY(8px) scaleX(1.25);
-    opacity: 0.45;
-  }
-}
-
-/* Pointer hover only on devices that truly hover; a tap on touch
-   must not leave a phantom lifted case. */
-@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
-  .shelf-case:hover {
-    transform: perspective(900px) translateY(-10px) rotateX(4deg) scale(1.02);
-    z-index: 20;
+  .btn-quiet {
+    background: transparent;
+    color: var(--text-muted);
   }
 
-  /* The lifted case throws a wider, softer shadow. */
-  .shelf-case:hover::after {
-    transform: translateY(8px) scaleX(1.25);
-    opacity: 0.45;
+  .btn:active,
+  .liquid-glass:active {
+    transform: translateY(1px) scale(0.985);
+    transition-duration: var(--m-press);
   }
-}
 
-/* ---- Per-category shelf pieces ----
-   Each pick is a physical object: a blu-ray case, a TV playing the
-   cover, a vinyl record, a game case, or a hardcover book. The
-   .piece fills the .shelf-case aspect box; decorative parts are
-   pointer-events:none so dragging still works. */
+  .btn:disabled,
+  .liquid-glass:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 
-.piece {
-  position: absolute;
-  inset: 0;
-}
+  .field {
+    width: 100%;
+    min-height: 46px;
+    padding: 0 0.875rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    transition:
+      border-color 140ms var(--ease),
+      box-shadow 140ms var(--ease);
+  }
 
-.piece :is(span, .piece-tablet-screen) {
-  pointer-events: none;
-}
+  .field::placeholder {
+    color: color-mix(in srgb, var(--text-muted) 75%, transparent);
+  }
 
-/* Blu-ray: a blue translucent plastic case with a top logo strip and
-   a left spine sheen; the printed cover sits inset behind the blue
-   frame, just like a real Blu-ray keepcase. */
-.piece-bluray {
-  overflow: hidden;
-  container-type: inline-size;
-  border-radius: 3px;
-  background: linear-gradient(160deg, #4a90f2, #1857c9 52%, #0b3795);
-  box-shadow:
-    inset 0 0 0 1px rgb(255 255 255 / 0.28),
-    inset 0 1px 0 rgb(255 255 255 / 0.5),
-    0 12px 22px -14px rgb(0 0 0 / 0.85);
-}
+  .field:focus-visible {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent);
+  }
 
-/* The printed cover sleeve, inset so the blue case shows as a frame. */
-.piece-bluray-art {
-  position: absolute;
-  inset: 9% 2.5% 2.5%;
-  overflow: hidden;
-  border-radius: 1px;
-  background: #000;
-  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.45);
-}
+  textarea.field {
+    padding-block: 0.75rem;
+    line-height: 1.5;
+  }
 
-/* Top strip carrying the Blu-ray Disc logo. */
-.piece-bluray-band {
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 9%;
-  z-index: 3;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(to bottom, #3d83ee, #1450bd);
-  border-bottom: 1px solid rgb(255 255 255 / 0.3);
-}
+  .card {
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    transition:
+      transform var(--m-out) var(--ease),
+      border-color var(--m-out) var(--ease);
+  }
 
-.piece-bluray-logo {
-  font-style: italic;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  white-space: nowrap;
-  line-height: 1;
-  color: #fff;
-  font-size: clamp(6px, 8cqw, 13px);
-  text-shadow: 0 1px 1px rgb(0 0 0 / 0.4);
-}
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    min-height: 26px;
+    padding: 0 0.625rem;
+    border-radius: 9999px;
+    background: color-mix(in oklab, var(--text) 8%, var(--bg));
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+  }
 
-.piece-bluray-spine {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 6px;
-  z-index: 3;
-  background: linear-gradient(
-    to right,
-    rgb(255 255 255 / 0.4),
-    transparent
-  );
-}
+  /* A link in running text: a faint hairline at rest, an ink line
+     that draws left to right on hover and leaves to the right. */
+  .link {
+    color: var(--text);
+    text-decoration: none;
+    background-image:
+      linear-gradient(currentColor, currentColor),
+      linear-gradient(
+        color-mix(in srgb, currentColor 30%, transparent),
+        color-mix(in srgb, currentColor 30%, transparent)
+      );
+    background-repeat: no-repeat;
+    background-position:
+      100% 100%,
+      0 100%;
+    background-size:
+      0 1px,
+      100% 1px;
+    transition: background-size var(--m-out) var(--ease);
+  }
 
-/* Shows: an older white iPad. A white front face with thin black
-   bezels, a front camera dot up top and a round home button below,
-   with the cover art filling the glass screen. */
-.piece-tablet {
-  filter: drop-shadow(0 14px 22px rgb(0 0 0 / 0.55));
-}
+  /* A cover or photo inside a link: zooms a touch inside its frame. */
+  .m-zoom {
+    display: block;
+    overflow: hidden;
+  }
 
-/* The white front face fills the case; a soft diagonal highlight keeps
-   the glossy front-glass look without tinting it. */
-.piece-tablet-body {
-  position: absolute;
-  inset: 0;
-  border-radius: 9%;
-  background:
-    linear-gradient(
-      135deg,
-      #ffffff 0%,
-      #f3f4f6 38%,
-      #e2e5ea 70%,
-      #cfd3da 100%
-    );
-  box-shadow:
-    inset 0 0 0 1px rgb(255 255 255 / 0.7),
-    inset 0 2px 1px rgb(255 255 255 / 0.85),
-    inset 0 -2px 3px rgb(0 0 0 / 0.18),
-    0 16px 26px -16px rgb(0 0 0 / 0.85);
-}
-
-/* Front-facing camera, centred in the top bezel. */
-.piece-tablet-cam {
-  position: absolute;
-  top: 3%;
-  left: 50%;
-  width: 4%;
-  aspect-ratio: 1;
-  min-width: 3px;
-  transform: translateX(-50%);
-  border-radius: 9999px;
-  background: radial-gradient(circle at 50% 40%, #2b3a4a 0 40%, #07090c 70%);
-  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.35);
-}
-
-/* The glass screen: wider top/bottom bezels for the camera and the
-   home button, slim side bezels, cover art filling it edge to edge. */
-.piece-tablet-screen {
-  position: absolute;
-  inset: 8% 6% 8% 6%;
-  overflow: hidden;
-  border-radius: 2%;
-  background: #000;
-  box-shadow:
-    inset 0 0 0 1px #05070b,
-    0 0 0 1px rgb(0 0 0 / 0.55);
-}
-
-/* Glass reflection sweeping across the screen. */
-.piece-tablet-glare {
-  position: absolute;
-  inset: 0;
-  z-index: 4;
-  background: linear-gradient(
-    125deg,
-    rgb(255 255 255 / 0.16) 0%,
-    rgb(255 255 255 / 0.04) 18%,
-    transparent 40%
-  );
-}
-
-/* Home button, centred in the bottom bezel: a white round key with the
-   classic rounded-square glyph etched into it. */
-.piece-tablet-home {
-  position: absolute;
-  bottom: 1%;
-  left: 50%;
-  width: 8%;
-  aspect-ratio: 1;
-  min-width: 7px;
-  transform: translateX(-50%);
-  border-radius: 9999px;
-  background: radial-gradient(circle at 50% 38%, #ffffff, #eceef1 62%, #cfd3da);
-  box-shadow:
-    inset 0 0 0 1px rgb(0 0 0 / 0.14),
-    inset 0 1px 1px rgb(255 255 255 / 0.9),
-    0 1px 1px rgb(0 0 0 / 0.18);
-}
-
-.piece-tablet-home::after {
-  content: "";
-  position: absolute;
-  inset: 30%;
-  border-radius: 24%;
-  border: 1px solid rgb(0 0 0 / 0.28);
-}
-
-/* Vinyl: a black record with groove rings and the album art as the
-   center label, spinning gently on hover. */
-.piece-vinyl-disc {
-  position: absolute;
-  inset: 0;
-  border-radius: 9999px;
-  background:
-    repeating-radial-gradient(
-      circle at 50% 50%,
-      #0a0a0b 0 2px,
-      #18181b 2px 4px
-    ),
-    radial-gradient(circle at 50% 50%, #202023, #050506 78%);
-  box-shadow:
-    0 14px 26px -12px rgb(0 0 0 / 0.85),
-    inset 0 0 0 1px rgb(0 0 0 / 0.5);
-}
-
-.piece-vinyl-disc::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  background: linear-gradient(
-    125deg,
-    transparent 42%,
-    color-mix(in srgb, var(--glow) 12%, transparent) 49%,
-    transparent 56%
-  );
-}
-
-.piece-vinyl-label {
-  position: absolute;
-  inset: 30%;
-  overflow: hidden;
-  border-radius: 9999px;
-  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.5);
-}
-
-.piece-vinyl-hole {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 6%;
-  height: 6%;
-  transform: translate(-50%, -50%);
-  z-index: 3;
-  border-radius: 9999px;
-  background: var(--bg);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--glow) 30%, transparent);
-}
-
-/* Game case: a glossy black console keepcase (PS2-style) — a platform
-   header band carrying the PlayStation logo, the cover behind a slim
-   black frame, a left spine, and a plastic sheen. */
-.piece-game {
-  overflow: hidden;
-  border-radius: 5px;
-  background: linear-gradient(157deg, #303036, #161618 52%, #0b0b0d);
-  box-shadow:
-    inset 0 0 0 1px rgb(255 255 255 / 0.06),
-    inset 0 1px 0 rgb(255 255 255 / 0.18),
-    0 14px 24px -14px rgb(0 0 0 / 0.85);
-}
-
-/* The printed cover, inset uniformly so a thin black case edge frames
-   it without cropping the art (the piece is already 2:3). */
-.piece-game-art {
-  position: absolute;
-  inset: 2.5%;
-  overflow: hidden;
-  border-radius: 1px;
-  background: #000;
-}
-
-/* Platform header band across the top: glossy, with a blue accent edge
-   and a small platform logo chip, like a real console game box. */
-.piece-game-header {
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 11%;
-  z-index: 3;
-  display: flex;
-  align-items: center;
-  padding-left: 6%;
-  background: linear-gradient(to bottom, #262a36, #0c0d12);
-  box-shadow:
-    inset 0 2px 0 #3a9bff,
-    inset 0 -1px 0 rgb(0 0 0 / 0.6);
-}
-
-/* The PlayStation "PS" logo, white, sized to the platform band. The
-   24x24 viewBox is square, so width follows from the height. */
-.piece-game-logo {
-  width: auto;
-  height: 66%;
-  fill: #eef2f8;
-  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.45));
-}
-
-.piece-game-spine {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 5%;
-  z-index: 3;
-  background: linear-gradient(to right, rgb(0 0 0 / 0.6), transparent);
-}
-
-/* Plastic gloss across the whole case. */
-.piece-game-sheen {
-  position: absolute;
-  inset: 0;
-  z-index: 5;
-  background: linear-gradient(
-    120deg,
-    rgb(255 255 255 / 0.14) 0%,
-    rgb(255 255 255 / 0.03) 16%,
-    transparent 34%
-  );
-}
-
-/* Book: hardcover with a left spine (raised hubs), a cream page
-   block on the right edge, and a diagonal cover sheen. */
-.piece-book {
-  overflow: hidden;
-  border-radius: 2px 5px 5px 2px;
-  /* Warm board/paper tone so the book reads as a book, not a black
-     slab — shows as a thin board edge framing the cover. */
-  background: linear-gradient(135deg, #d8bd8f, #c2a064 60%, #a9854c);
-  box-shadow:
-    0 14px 24px -14px rgb(0 0 0 / 0.85),
-    inset 0 0 0 1px rgb(70 46 20 / 0.5);
-}
-
-/* The printed cover, inset so a thin warm board edge frames it. The
-   inset is uniform so the whole cover stays visible (no cropping). */
-.piece-book-art {
-  position: absolute;
-  inset: 3.5%;
-  overflow: hidden;
-  border-radius: 1px;
-  box-shadow: 0 0 0 1px rgb(70 46 20 / 0.45);
-}
-
-/* A warm leather/cloth binding shadow at the very left edge — keeps
-   the full cover visible (translucent) but tints the fold brown, not
-   black. */
-.piece-book-spine {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 8%;
-  z-index: 3;
-  background: linear-gradient(
-    to right,
-    rgb(48 30 14 / 0.6),
-    rgb(48 30 14 / 0.18) 45%,
-    transparent
-  );
-}
-
-/* The cream page block (fore-edge) peeking past the right of the cover. */
-.piece-book-pages {
-  position: absolute;
-  top: 2.5%;
-  bottom: 2.5%;
-  right: 0;
-  width: 5%;
-  z-index: 3;
-  background: repeating-linear-gradient(
-    90deg,
-    #f0e7d4 0 1px,
-    #cebf9f 1px 2px
-  );
-  border-radius: 0 2px 2px 0;
-}
-
-.piece-book-sheen {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  background: linear-gradient(
-    118deg,
-    color-mix(in srgb, var(--glow) 10%, transparent) 0%,
-    transparent 30%
-  );
-}
-
-@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
-  .shelf-case:hover .piece-vinyl-disc {
-    transition: transform 600ms ease;
-    transform: rotate(22deg);
+  .m-zoom img {
+    transition: scale var(--m-image-out) var(--ease);
   }
 }
 
-/* The plank itself: lit top edge, falloff into the page below. */
-.shelf-plank {
-  position: relative;
-  height: 12px;
-  background: linear-gradient(
-    to bottom,
-    var(--surface-raised),
-    var(--surface) 70%,
-    var(--bg)
-  );
-  border-top: 1px solid color-mix(in srgb, var(--glow) 28%, transparent);
-  box-shadow:
-    0 10px 16px -8px rgb(0 0 0 / 0.8),
-    0 24px 40px -20px rgb(0 0 0 / 0.6);
+/* The hover layer: only for a pointer that truly hovers. Buttons step
+   up 1px and their fill steps toward the ink; a linked card lifts 2px;
+   a linked cover zooms 1.03 inside its frame; links draw their line. */
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover:not(:disabled),
+  .liquid-glass:hover:not(:disabled) {
+    transform: translateY(-1px);
+    background: color-mix(in oklab, var(--text) 14%, var(--bg));
+    transition-duration: var(--m-in);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background: color-mix(in oklab, var(--accent) 86%, var(--text));
+  }
+
+  .btn-quiet:hover:not(:disabled) {
+    background: color-mix(in oklab, var(--text) 8%, var(--bg));
+    color: var(--text);
+  }
+
+  .btn-danger:hover:not(:disabled) {
+    background: color-mix(in oklab, var(--danger) 18%, var(--bg));
+    color: var(--danger);
+  }
+
+  .btn:hover:active:not(:disabled),
+  .liquid-glass:hover:active:not(:disabled) {
+    transform: translateY(1px) scale(0.985);
+  }
+
+  a.card:hover,
+  .card-lift:hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--text) 26%, var(--border));
+    transition-duration: 180ms;
+  }
+
+  .link:hover {
+    background-position:
+      0 100%,
+      0 100%;
+    background-size:
+      100% 1px,
+      100% 1px;
+    transition-duration: var(--m-in);
+  }
+
+  a:hover .m-zoom img,
+  .m-zoom:hover img,
+  .group:hover .m-zoom img {
+    scale: 1.03;
+    transition-duration: var(--m-image);
+  }
+}
+
+/* ---- The hero entrance ----
+   Once on load: each headline line rises out of its own mask, then the
+   lead and the buttons fade up 12px. About 1.1s, then the hero stands.
+   Markup: <h1><span class="enter-line"><span>...</span></span>...</h1>
+   and .enter-up on what follows, with --enter-i as its order. */
+.enter-line {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.08em;
+  margin-bottom: -0.08em;
+}
+
+.enter-line > span {
+  display: block;
+}
+
+@keyframes enter-line-rise {
+  from {
+    transform: translateY(105%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes enter-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .enter-line > span {
+    animation: enter-line-rise 700ms var(--ease-enter) both;
+    animation-delay: calc(var(--enter-i, 0) * 80ms);
+  }
+
+  .enter-up {
+    animation: enter-fade-up 520ms var(--ease-enter) both;
+    animation-delay: calc(360ms + var(--enter-i, 0) * 60ms);
+  }
 }
 
 /* Dialogs rise softly into place; the backdrop blurs in with them.
@@ -1482,487 +460,3 @@ dialog[open]::backdrop {
   }
 }
 
-/* ---- The landing dolly: a candlelit walk through the stacks ----
-   A scroll-driven camera glides down a corridor of five shelf bays,
-   one per category. The scene reuses the sanctioned "aged book" spine
-   palette from the library backdrop, warmed by candlelight. All
-   motion is opt-in under no-preference; under reduced motion the
-   track collapses to one screen (the JS never expands it) and the
-   scene is a static candlelit frame. */
-
-/* Base height is one screen; the camera script stretches it into the
-   walk. Without JS (or with reduced motion) the page stays compact. */
-.dolly-track {
-  height: 100svh;
-}
-
-.dolly-viewport {
-  position: sticky;
-  top: 0;
-  height: 100svh;
-  overflow: hidden;
-  /* The scene invalidates every frame while the camera moves; keep
-     that churn from leaking into the rest of the page. */
-  contain: layout style paint;
-  perspective: 1100px;
-  perspective-origin: 50% 46%;
-  background: radial-gradient(
-    ellipse at 50% 42%,
-    #2a1d10 0%,
-    #170f08 46%,
-    var(--bg) 100%
-  );
-}
-
-.dolly-world {
-  position: absolute;
-  inset: 0;
-  transform-style: preserve-3d;
-  will-change: transform;
-}
-
-/* Floor: warm plank run receding into the dark. The side overhang
-   only needs to cover the camera's ±14px sway — every extra vw here
-   is GPU texture on the two largest planes in the scene. */
-.dolly-floor {
-  position: absolute;
-  bottom: -2px;
-  left: -12vw;
-  right: -12vw;
-  height: 5200px;
-  transform-origin: 50% 100%;
-  transform: rotateX(90deg);
-  background:
-    linear-gradient(to top, rgb(10 10 11 / 0) 0%, var(--bg) 72%),
-    radial-gradient(
-      ellipse at 50% 100%,
-      rgb(240 200 140 / 0.13),
-      rgb(240 200 140 / 0) 55%
-    ),
-    repeating-linear-gradient(
-      90deg,
-      #241a12 0 3px,
-      #3a2c20 3px 88px,
-      #2a1f15 88px 91px,
-      #46372a 91px 178px
-    );
-}
-
-/* Ceiling: faint beams swallowed by darkness. */
-.dolly-ceiling {
-  position: absolute;
-  top: -2px;
-  left: -12vw;
-  right: -12vw;
-  height: 5200px;
-  transform-origin: 50% 0%;
-  transform: rotateX(-90deg);
-  background:
-    linear-gradient(to top, rgb(10 10 11 / 0) 0%, var(--bg) 55%),
-    repeating-linear-gradient(90deg, #16100a 0 140px, #1e150d 140px 156px);
-  opacity: 0.85;
-}
-
-/* End of the corridor: hearth-light. */
-/* The glow is its own plane — no full-viewport wrapper layer around
-   it. No filter: blur() anywhere in the scene — a large blur surface
-   gets re-evaluated every frame the world transform changes, which is
-   the difference between a smooth walk and a slideshow. The gradients
-   carry their own softness instead. */
-.dolly-hearth {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 70vw;
-  height: 70vh;
-  transform: translate(-50%, -50%) translateZ(-5300px);
-  border-radius: 50%;
-  background: radial-gradient(
-    closest-side,
-    rgb(240 200 130 / 0.42),
-    rgb(240 200 130 / 0.16) 38%,
-    rgb(240 200 130 / 0.05) 62%,
-    rgb(240 200 130 / 0) 88%
-  );
-}
-
-/* A shelf wall: spine bands (per-bay, via --spines), shelf lines every
-   150px, and library light catching the spine tops. Angled toward the
-   corridor by the component. */
-.dolly-wall {
-  position: absolute;
-  top: 4vh;
-  bottom: 0;
-  width: 38vw;
-  border: 2px solid #241a12;
-  box-shadow: inset 0 0 60px rgb(0 0 0 / 0.55);
-  background:
-    linear-gradient(
-      to bottom,
-      rgb(240 220 174 / 0.1),
-      rgb(240 220 174 / 0) 18%
-    ),
-    repeating-linear-gradient(
-      0deg,
-      rgb(0 0 0 / 0) 0 150px,
-      #241a12 150px 162px
-    ),
-    var(--spines);
-}
-
-/* A candle flame on a shelf edge. Static point of light when motion
-   is off; flickers under no-preference. */
-.dolly-flame {
-  position: absolute;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #f0dcae;
-  box-shadow:
-    0 0 18px 6px rgb(240 190 120 / 0.55),
-    0 0 60px 24px rgb(240 190 120 / 0.18);
-}
-
-.dolly-flame-lg {
-  width: 12px;
-  height: 12px;
-  box-shadow:
-    0 0 20px 8px rgb(240 190 120 / 0.6),
-    0 0 80px 32px rgb(240 190 120 / 0.22);
-}
-
-/* A bay's framed pixel artifact + label. Opacity is driven by the
-   camera script; hidden in the static frame so the hero stays alone
-   on screen. Sized to its content (not the viewport) so each art
-   block stays a small compositor layer. */
-.dolly-art {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: max-content;
-  max-width: 92vw;
-  transform: translate(-50%, calc(-50% + 4vh));
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 26px;
-  opacity: 0;
-}
-
-.dolly-art-float {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.dolly-art-frame {
-  background: #f0e7d4;
-  border: 4px solid #5b2b2e;
-  padding: clamp(16px, 2.2vw, 30px);
-  box-shadow:
-    0 24px 50px -20px rgb(0 0 0 / 0.9),
-    0 0 60px rgb(240 190 120 / 0.22);
-}
-
-.dolly-art-frame svg {
-  display: block;
-  width: clamp(120px, 14vw, 210px);
-  height: auto;
-}
-
-/* Light shafts + dust motes, fixed to the camera. Motes only exist
-   while their animation runs; shafts hold a quiet base glow. */
-.dolly-shaft {
-  position: absolute;
-  opacity: 0.4;
-  /* An elliptical falloff keeps the beam's edges soft without blur. */
-  background: radial-gradient(
-    ellipse 55% 60% at 50% 10%,
-    rgb(240 210 150 / 0.1),
-    rgb(240 210 150 / 0.04) 45%,
-    rgb(240 210 150 / 0) 75%
-  );
-}
-
-.dolly-mote {
-  position: absolute;
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
-  background: rgb(240 220 174 / 0.5);
-  opacity: 0;
-}
-
-.dolly-vignette {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: radial-gradient(
-    ellipse at 50% 38%,
-    rgb(10 10 11 / 0) 0%,
-    rgb(10 10 11 / 0.55) 66%,
-    var(--bg) 100%
-  );
-}
-
-/* Warm accents for copy standing inside the candlelight. */
-.dolly-text-warm {
-  color: #c9a884;
-}
-
-.dolly-text-dim {
-  color: #a8855f;
-}
-
-.dolly-title {
-  font-weight: 420;
-  letter-spacing: -0.02em;
-  text-shadow: 0 2px 24px rgb(240 190 120 / 0.25);
-}
-
-.dolly-hero-title {
-  font-weight: 420;
-  text-shadow: 0 4px 60px rgb(240 190 120 / 0.25);
-  text-wrap: balance;
-}
-
-.dolly-finale-glow {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -54%);
-  width: min(72vw, 900px);
-  height: min(64vh, 620px);
-  border-radius: 50%;
-  background: radial-gradient(
-    closest-side,
-    rgb(240 200 130 / 0.24),
-    rgb(240 200 130 / 0.1) 42%,
-    rgb(240 200 130 / 0.03) 64%,
-    rgb(240 200 130 / 0) 88%
-  );
-  pointer-events: none;
-}
-
-/* CTAs: a lit-candle primary, a glass ghost, and the finale's quiet
-   anchor down to the shelves index. */
-.dolly-cta-primary {
-  display: flex;
-  min-height: 48px;
-  align-items: center;
-  padding: 0 40px;
-  border-radius: 9999px;
-  font-size: 16px;
-  font-weight: 600;
-  color: #241a12;
-  background: linear-gradient(180deg, #f0dcae, #c9a884);
-  box-shadow:
-    0 0 40px rgb(240 200 140 / 0.3),
-    0 14px 30px -14px rgb(0 0 0 / 0.8);
-}
-
-.dolly-cta-primary:hover {
-  color: #241a12;
-}
-
-.dolly-cta-ghost {
-  display: flex;
-  min-height: 48px;
-  align-items: center;
-  padding: 0 40px;
-  border-radius: 9999px;
-  font-size: 16px;
-  color: var(--text);
-  border: 1px solid rgb(240 220 174 / 0.3);
-  background: rgb(240 220 174 / 0.05);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  box-shadow:
-    inset 0 1px 0 rgb(240 220 174 / 0.2),
-    0 14px 30px -14px rgb(0 0 0 / 0.8);
-}
-
-.dolly-cta-ghost:hover {
-  background: rgb(240 220 174 / 0.12);
-  color: var(--text);
-}
-
-.dolly-cta-quiet {
-  display: flex;
-  min-height: 48px;
-  align-items: center;
-  padding: 0 28px;
-  border-radius: 9999px;
-  font-size: 15px;
-  color: #c9a884;
-  border: 1px solid rgb(240 220 174 / 0.2);
-  background: rgb(240 220 174 / 0.04);
-  transition: background 250ms ease, color 250ms ease;
-}
-
-.dolly-cta-quiet:hover {
-  background: rgb(240 220 174 / 0.1);
-  color: var(--text);
-}
-
-.dolly-skip {
-  width: 34px;
-  height: 34px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  border: 1px solid rgb(240 220 174 / 0.18);
-  background: rgb(10 10 11 / 0.45);
-  color: #a8855f;
-  font-size: 14px;
-  line-height: 1;
-  cursor: pointer;
-  opacity: 0.75;
-  padding: 0;
-  transition: opacity 250ms ease, background 250ms ease;
-}
-
-.dolly-skip:hover {
-  opacity: 1;
-  background: rgb(240 220 174 / 0.1);
-}
-
-.dolly-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: rgb(240 220 174 / 0.25);
-  transition: background 300ms ease, transform 300ms ease;
-}
-
-/* The shelves index picks up the candlelight in its rules. */
-.dolly-index-row {
-  border-top: 1px solid rgb(240 220 174 / 0.14);
-  transition: background 200ms ease;
-}
-
-.dolly-index-row:last-child {
-  border-bottom: 1px solid rgb(240 220 174 / 0.14);
-}
-
-.dolly-index-row:hover {
-  background: rgb(240 220 174 / 0.03);
-}
-
-@keyframes candle-flicker {
-  0%,
-  100% {
-    opacity: 0.85;
-    transform: scale(1);
-  }
-  18% {
-    opacity: 1;
-    transform: scale(1.12);
-  }
-  42% {
-    opacity: 0.72;
-    transform: scale(0.94);
-  }
-  66% {
-    opacity: 0.95;
-    transform: scale(1.06);
-  }
-  84% {
-    opacity: 0.8;
-    transform: scale(0.98);
-  }
-}
-
-@keyframes art-float {
-  from {
-    transform: translateY(0);
-  }
-  to {
-    transform: translateY(-10px);
-  }
-}
-
-@keyframes hint-bob {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(6px);
-  }
-}
-
-@keyframes mote-rise {
-  0% {
-    transform: translate3d(0, 0, 0);
-    opacity: 0;
-  }
-  12% {
-    opacity: 0.5;
-  }
-  88% {
-    opacity: 0.3;
-  }
-  100% {
-    transform: translate3d(28px, -44vh, 0);
-    opacity: 0;
-  }
-}
-
-@keyframes shaft-breathe {
-  0%,
-  100% {
-    opacity: 0.3;
-  }
-  50% {
-    opacity: 0.55;
-  }
-}
-
-/* All dolly motion is opt-in; per-element durations and delays come
-   from the component as inline styles. */
-@media (prefers-reduced-motion: no-preference) {
-  .dolly-flame {
-    animation: candle-flicker 3s ease-in-out infinite;
-  }
-
-  .dolly-art-float {
-    animation: art-float 7s ease-in-out infinite alternate;
-  }
-
-  .dolly-shaft {
-    animation: shaft-breathe 11s ease-in-out infinite;
-  }
-
-  .dolly-mote {
-    animation: mote-rise 14s linear infinite;
-  }
-
-  .dolly-hint-arrow {
-    animation: hint-bob 1.8s ease-in-out infinite;
-  }
-
-  .dolly-cta-primary,
-  .dolly-cta-ghost,
-  .dolly-cta-quiet,
-  .dolly-skip {
-    transition-property: transform, background, color, opacity;
-    transition-duration: 200ms, 250ms, 250ms, 250ms;
-    transition-timing-function: ease;
-  }
-
-  .dolly-cta-primary:hover,
-  .dolly-cta-ghost:hover,
-  .dolly-cta-quiet:hover {
-    transform: scale(1.03);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  /* The walk's chrome (scroll hint, skip, progress rail) only makes
-     sense while the camera moves. */
-  .dolly-rm-hide {
-    display: none;
-  }
-}

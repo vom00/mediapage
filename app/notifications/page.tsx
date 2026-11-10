@@ -7,17 +7,13 @@ export const metadata: Metadata = {
 
 export default function NotificationsPage() {
   return (
-    <div className="mx-auto w-full max-w-3xl px-6 py-14 sm:py-20">
-      <p className="reveal font-label text-xs uppercase tracking-[0.3em] text-ink-muted">
-        Who&rsquo;s knocking
-      </p>
-      <h1 className="reveal mt-3 font-display text-4xl tracking-tight sm:text-5xl">
-        Notifications
+    <div className="mx-auto w-full max-w-6xl px-6 py-12 sm:py-20">
+      <h1 className="text-4xl font-medium leading-[1.05] tracking-[-0.04em] sm:text-6xl">
+        <span className="enter-line">
+          <span>Notifications</span>
+        </span>
       </h1>
-      <div
-        className="reveal mt-10"
-        style={{ "--reveal-delay": "120ms" } as React.CSSProperties}
-      >
+      <div className="enter-up mt-8 max-w-3xl sm:mt-12">
         <NotificationsView />
       </div>
     </div>

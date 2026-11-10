@@ -27,7 +27,7 @@ export function Avatar({
   return (
     <span
       aria-hidden="true"
-      className={`flex items-center justify-center font-display italic text-ink-muted ${className}`}
+      className={`flex items-center justify-center font-medium text-ink-muted ${className}`}
     >
       {name.slice(0, 1)}
     </span>

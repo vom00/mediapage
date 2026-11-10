@@ -1,11 +1,13 @@
 "use client";
 
-import { X } from "lucide-react";
+import { Check, ExternalLink, X } from "lucide-react";
+import { motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { CoverImage } from "@/components/cover-image";
-import { FieldError, labelClass } from "@/components/form-field";
+import { FieldError } from "@/components/form-field";
+import { shelfStyle } from "@/components/media-card";
 import { CATEGORY_LABELS, SOURCE_NAMES } from "@/lib/categories";
 import { db } from "@/lib/firebase/client";
 import { postRecommendation } from "@/lib/recommendations";
@@ -121,170 +123,230 @@ export function MediaDetailDialog({
       ref={dialogRef}
       onClose={onClose}
       aria-labelledby="detail-title"
-      className="m-auto w-[min(92vw,44rem)] border border-edge bg-surface-raised p-0 text-ink backdrop:bg-bg/70 backdrop:backdrop-blur-sm"
+      style={item ? shelfStyle(item.category) : undefined}
+      className="m-auto max-h-[calc(100dvh-2rem)] w-[min(92vw,46rem)] overflow-y-auto rounded-[var(--radius-lg)] border border-edge bg-surface p-0 text-ink backdrop:bg-bg/70 backdrop:backdrop-blur-sm"
     >
       {item ? (
-        <div className="relative flex flex-col gap-6 p-6 sm:flex-row sm:p-8">
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="absolute right-4 top-4 flex size-11 items-center justify-center border border-edge text-ink-muted transition-colors duration-200 hover:border-glow hover:text-ink"
-          >
-            <X aria-hidden="true" className="size-4" />
-          </button>
-
-          <div className="relative aspect-[2/3] w-40 shrink-0 self-start overflow-hidden border border-edge bg-surface sm:w-52">
-            <CoverImage
-              src={item.imageUrl}
-              alt={`${item.title} cover art, enlarged`}
-            />
+        <div>
+          <div className="flex items-center justify-between gap-4 px-5 pt-3 sm:px-8 sm:pt-5">
+            <p className="flex items-center gap-2.5 text-sm text-ink-muted">
+              <span
+                aria-hidden="true"
+                className="size-2 rounded-full bg-(--shelf)"
+              />
+              {shelfLabel}
+            </p>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              className="btn size-11 min-h-0 p-0 text-ink-muted hover:text-ink"
+            >
+              <X aria-hidden="true" className="size-4" />
+            </button>
           </div>
 
-          <div className="flex min-w-0 flex-col gap-4 pr-8">
-            <div>
-              <p className="font-label text-xs uppercase tracking-[0.25em] text-ink-muted">
-                {shelfLabel}
-              </p>
+          <div className="grid grid-cols-[6.5rem_1fr] grid-rows-[auto_auto_1fr] gap-x-5 px-5 pb-6 pt-2 sm:grid-cols-[13rem_1fr] sm:gap-x-8 sm:px-8 sm:pb-8">
+            <div className="relative aspect-[2/3] w-full self-start overflow-hidden rounded-[var(--radius-md)] border border-edge bg-surface-raised sm:row-span-3">
+              <CoverImage
+                src={item.imageUrl}
+                alt={`${item.title} cover art, enlarged`}
+              />
+            </div>
+
+            <div className="min-w-0 self-end sm:self-start">
               <h2
                 id="detail-title"
-                className="mt-2 font-display text-3xl leading-tight tracking-tight"
+                className="text-2xl font-medium leading-[1.1] tracking-[-0.035em] text-balance sm:text-4xl"
               >
                 {item.title}
               </h2>
-              {meta ? <p className="mt-2 text-sm text-ink-muted">{meta}</p> : null}
+              {meta ? (
+                <p className="mt-3 text-sm leading-relaxed text-ink-muted">
+                  {meta}
+                </p>
+              ) : null}
             </div>
 
-            {item.synopsis ? (
-              <p className="max-h-40 overflow-y-auto text-sm leading-relaxed text-ink-muted">
-                {item.synopsis}
-              </p>
-            ) : null}
-
-            {item.sourceUrl ? (
-              <a
-                href={item.sourceUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="text-sm text-ink-muted underline underline-offset-4 hover:text-ink"
-              >
-                View on {SOURCE_NAMES[item.source]}
-              </a>
-            ) : null}
-
-            <div className="mt-auto flex flex-col gap-3">
-              {error ? (
-                <div role="alert">
-                  <FieldError id="add-error" message={error} />
-                </div>
-              ) : null}
-
-              {addState === "added" ? (
-                <p className="border-l-2 border-glow pl-3 text-sm">
-                  Added to your {shelfLabel} shelf.
-                </p>
-              ) : status === "ready" ? (
-                <button
-                  type="button"
-                  onClick={handleAdd}
-                  disabled={addState === "busy"}
-                  className="liquid-glass flex min-h-11 w-fit items-center rounded-full px-6 font-medium text-ink transition-opacity duration-200 hover:opacity-90 disabled:opacity-50"
-                >
-                  Add to my {shelfLabel} shelf
-                </button>
-              ) : (
-                <Link
-                  href="/login"
-                  className="liquid-glass flex min-h-11 w-fit items-center rounded-full px-6 text-sm text-ink transition-opacity duration-200 hover:opacity-90"
-                >
-                  Log in to add this to your shelf
-                </Link>
-              )}
-
-              {status === "ready" ? (
-                watchState === "added" ? (
-                  <p className="border-l-2 border-glow pl-3 text-sm">
-                    Added to your watchlist.
-                  </p>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleAddWatchlist}
-                    disabled={watchState === "busy"}
-                    className="liquid-glass flex min-h-11 w-fit items-center rounded-full px-6 text-sm text-ink transition-opacity duration-200 hover:opacity-90 disabled:opacity-50"
-                  >
-                    Add to watchlist
-                  </button>
-                )
-              ) : null}
-
-              {status === "ready" && recState === "closed" ? (
-                <button
-                  type="button"
-                  onClick={() => setRecState("open")}
-                  className="liquid-glass flex min-h-11 w-fit items-center rounded-full px-6 text-sm text-ink transition-opacity duration-200 hover:opacity-90"
-                >
-                  Recommend it
-                </button>
-              ) : null}
-
-              {recState === "posted" ? (
-                <p className="border-l-2 border-glow pl-3 text-sm">
-                  Recommendation posted. It is live on your page.
+            <div className="col-span-2 mt-6 flex min-w-0 flex-col gap-5 sm:col-span-1">
+              {item.synopsis ? (
+                <p className="max-h-40 overflow-y-auto leading-relaxed text-ink-muted">
+                  {item.synopsis}
                 </p>
               ) : null}
 
-              {recState === "open" || recState === "busy" ? (
-                <form
-                  onSubmit={handleRecommend}
-                  className="flex flex-col gap-3 border-t border-edge pt-4"
+              {item.sourceUrl ? (
+                <a
+                  href={item.sourceUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-muted underline underline-offset-4 hover:text-ink"
                 >
-                  <div>
-                    <label htmlFor="rec-note" className={labelClass}>
-                      Why this one?
-                    </label>
-                    <textarea
-                      id="rec-note"
-                      required
-                      maxLength={500}
-                      rows={3}
-                      value={note}
-                      onChange={(e) => setNote(e.target.value)}
-                      className="mt-2 w-full border border-edge bg-bg px-4 py-3 text-ink placeholder:text-ink-muted/60 transition-colors duration-200 focus:border-glow"
-                      placeholder="The pitch only you could write."
-                    />
+                  View on {SOURCE_NAMES[item.source]}
+                  <ExternalLink aria-hidden="true" className="size-3.5" />
+                </a>
+              ) : null}
+
+              <div className="flex flex-col gap-4 border-t border-edge pt-5">
+                {error ? (
+                  <div role="alert">
+                    <FieldError id="add-error" message={error} />
                   </div>
-                  <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm text-ink-muted">
-                    <input
-                      type="checkbox"
-                      checked={allowComments}
-                      onChange={(e) => setAllowComments(e.target.checked)}
-                      className="size-4 accent-ink"
-                    />
-                    Allow comments
-                  </label>
-                  <p className="text-xs text-ink-muted">
-                    Recommendations are public. Anyone can see this and your
-                    name on it, even if your profile is followers-only.
-                  </p>
-                  {recError ? (
-                    <div role="alert">
-                      <FieldError id="rec-error" message={recError} />
-                    </div>
-                  ) : null}
-                  <button
-                    type="submit"
-                    disabled={recState === "busy"}
-                    className="liquid-glass flex min-h-11 w-fit items-center rounded-full px-6 font-medium text-ink transition-opacity duration-200 hover:opacity-90 disabled:opacity-50"
+                ) : null}
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <Swap
+                    swapKey={addState === "added" ? "added" : "add"}
+                    className={addState === "added" ? "" : "w-full"}
                   >
-                    Post recommendation
-                  </button>
-                </form>
-              ) : null}
+                    {addState === "added" ? (
+                      <Confirmation>Added to your {shelfLabel} shelf.</Confirmation>
+                    ) : status === "ready" ? (
+                      <button
+                        type="button"
+                        onClick={handleAdd}
+                        disabled={addState === "busy"}
+                        className="btn btn-primary w-full"
+                      >
+                        Add to my {shelfLabel} shelf
+                      </button>
+                    ) : (
+                      <Link href="/login" className="btn btn-primary w-full">
+                        Log in to add this to your shelf
+                      </Link>
+                    )}
+                  </Swap>
+
+                  {status === "ready" ? (
+                    <Swap swapKey={watchState === "added" ? "added" : "add"}>
+                      {watchState === "added" ? (
+                        <Confirmation>Added to your watchlist.</Confirmation>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleAddWatchlist}
+                          disabled={watchState === "busy"}
+                          className="btn"
+                        >
+                          Add to watchlist
+                        </button>
+                      )}
+                    </Swap>
+                  ) : null}
+
+                  {status === "ready" && recState === "closed" ? (
+                    <button
+                      type="button"
+                      onClick={() => setRecState("open")}
+                      className="btn"
+                    >
+                      Recommend it
+                    </button>
+                  ) : null}
+                </div>
+
+                {recState === "posted" ? (
+                  <Swap swapKey="posted">
+                    <Confirmation>
+                      Recommendation posted. It is live on your page.
+                    </Confirmation>
+                  </Swap>
+                ) : null}
+
+                {recState === "open" || recState === "busy" ? (
+                  <form
+                    onSubmit={handleRecommend}
+                    className="mt-2 flex flex-col gap-4"
+                  >
+                    <div>
+                      <label htmlFor="rec-note" className="block text-sm font-medium">
+                        Why this one?
+                      </label>
+                      <textarea
+                        id="rec-note"
+                        required
+                        maxLength={500}
+                        rows={4}
+                        value={note}
+                        onChange={(e) => setNote(e.target.value)}
+                        className="field mt-2 text-base leading-snug"
+                        placeholder="The pitch only you could write."
+                      />
+                      <p
+                        aria-hidden="true"
+                        className="mt-1.5 text-right font-label text-xs text-ink-muted"
+                      >
+                        {note.length} / 500
+                      </p>
+                    </div>
+                    <label className="flex min-h-11 w-fit cursor-pointer items-center gap-3 text-sm text-ink-muted">
+                      <input
+                        type="checkbox"
+                        checked={allowComments}
+                        onChange={(e) => setAllowComments(e.target.checked)}
+                        className="size-5 accent-accent"
+                      />
+                      Allow comments
+                    </label>
+                    <p className="text-xs leading-relaxed text-ink-muted">
+                      Recommendations are public. Anyone can see this and your
+                      name on it, even if your profile is followers-only.
+                    </p>
+                    {recError ? (
+                      <div role="alert">
+                        <FieldError id="rec-error" message={recError} />
+                      </div>
+                    ) : null}
+                    <button
+                      type="submit"
+                      disabled={recState === "busy"}
+                      className="btn btn-primary w-fit"
+                    >
+                      Post recommendation
+                    </button>
+                  </form>
+                ) : null}
+              </div>
             </div>
           </div>
         </div>
       ) : null}
     </dialog>
+  );
+}
+
+// Swaps what it holds in place: the new content fades in over 150ms.
+function Swap({
+  swapKey,
+  className,
+  children,
+}: {
+  swapKey: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  const reduceMotion = useReducedMotion();
+  return (
+    <motion.div
+      key={swapKey}
+      initial={reduceMotion ? false : { opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.15, ease: [0.2, 0.8, 0.2, 1] }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+function Confirmation({ children }: { children: React.ReactNode }) {
+  return (
+    <p
+      role="status"
+      className="flex min-h-11 items-center gap-2.5 text-sm text-ink"
+    >
+      <Check aria-hidden="true" className="size-4 shrink-0 text-accent" />
+      {children}
+    </p>
   );
 }

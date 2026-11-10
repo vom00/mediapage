@@ -23,7 +23,7 @@ export function CoverImage({ src, alt }: { src: string; alt: string }) {
       alt={alt}
       fill
       sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 200px"
-      className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+      className="object-cover"
       onError={() => setCurrentSrc(PLACEHOLDER_COVER)}
     />
   );

@@ -63,3 +63,8 @@ pubsub-debug.log*
 
 # claude code (personal local settings)
 .claude/settings.local.json
+
+# per-workstream dev dist dirs and QA screenshots
+/.next-*/
+/e2e-screenshots/
+/qa-shots/

@@ -2,10 +2,14 @@
 
 import { useState } from "react";
 import { useAuth } from "@/components/auth-provider";
-import { buttonClass } from "@/components/form-field";
+import { buttonClass, FieldError } from "@/components/form-field";
 import { db } from "@/lib/firebase/client";
 import { setAccountDeleted } from "@/lib/settings";
 
+// Position in the one first-screen entrance (see .enter-up).
+const step = (i: number) => ({ "--enter-i": i }) as React.CSSProperties;
+
+// A single card: what deactivation hid, and one button to undo it.
 export function DeactivatedNotice() {
   const { user } = useAuth();
   const [busy, setBusy] = useState(false);
@@ -26,27 +30,35 @@ export function DeactivatedNotice() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-6 py-20 sm:py-28">
-      <h1 className="font-display text-4xl tracking-tight">
-        Your account is deactivated
-      </h1>
-      <p className="mt-4 max-w-md text-ink-muted">
-        Your page, shelves, and recommendations are hidden, not deleted.
-        Reactivate to bring everything back exactly as you left it.
-      </p>
-      <button
-        type="button"
-        onClick={() => void reactivate()}
-        disabled={busy}
-        className={`${buttonClass} mt-8 max-w-xs`}
-      >
-        Reactivate my account
-      </button>
-      {error ? (
-        <p role="alert" className="mt-4 border-l-2 border-glow pl-3 text-sm">
-          {error}
+    <div className="mx-auto w-full max-w-3xl px-4 py-16 sm:px-6 sm:py-28">
+      <div className="card p-7 sm:p-12">
+        <h1 className="text-4xl leading-[1.05] sm:text-6xl">
+          <span className="enter-line">
+            <span>Your account is deactivated</span>
+          </span>
+        </h1>
+        <p
+          className="enter-up mt-6 max-w-md text-lg text-ink-muted"
+          style={step(1)}
+        >
+          Your page, shelves, and recommendations are hidden, not deleted.
+          Reactivate to bring everything back as you left it.
         </p>
-      ) : null}
+        <button
+          type="button"
+          onClick={() => void reactivate()}
+          disabled={busy}
+          className={`${buttonClass} enter-up mt-9 sm:w-auto sm:min-w-64`}
+          style={step(2)}
+        >
+          Reactivate my account
+        </button>
+        {error ? (
+          <div role="alert">
+            <FieldError id="reactivate-error" message={error} />
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

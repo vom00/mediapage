@@ -44,28 +44,31 @@ export function RecommendationsSection({ uid }: { uid: string }) {
   return (
     <section
       aria-labelledby="recommendations-heading"
-      className="reveal mt-4 border-t border-edge py-8"
-      style={{ "--reveal-delay": "660ms" } as React.CSSProperties}
+      className="py-8 sm:py-10"
+      style={{ "--shelf-hue": "var(--accent)" } as React.CSSProperties}
     >
-      <h2
-        id="recommendations-heading"
-        className="font-display text-2xl tracking-tight"
-      >
-        Recommendations
-      </h2>
+      <div className="flex items-center gap-3">
+        <span aria-hidden="true" className="shelf-mark" />
+        <h2
+          id="recommendations-heading"
+          className="text-2xl font-medium leading-none sm:text-3xl"
+        >
+          Recommendations
+        </h2>
+      </div>
 
       {recs === null ? (
-        <div aria-hidden="true" className="mt-5 flex flex-col gap-4">
-          <div className="skeleton h-32 w-full" />
+        <div aria-hidden="true" className="mt-8 flex max-w-3xl flex-col gap-5">
+          <div className="skeleton h-72 w-full rounded-[var(--radius-lg)]" />
         </div>
       ) : recs.length === 0 ? (
-        <p className="mt-5 max-w-md text-ink-muted">
+        <p className="mt-8 max-w-md text-lg text-ink-muted">
           {isOwner ? (
             <>
               Nothing recommended yet. Open anything in the{" "}
               <Link
                 href="/library"
-                className="underline underline-offset-4 hover:text-ink"
+                className="link text-ink"
               >
                 library
               </Link>{" "}
@@ -76,7 +79,7 @@ export function RecommendationsSection({ uid }: { uid: string }) {
           )}
         </p>
       ) : (
-        <div className="mt-5 flex flex-col gap-5">
+        <div className="mt-8 flex max-w-3xl flex-col gap-6">
           {recs.map((rec) => (
             <RecommendationCard key={rec.id} rec={rec} />
           ))}

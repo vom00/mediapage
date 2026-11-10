@@ -103,27 +103,31 @@ export function ProfileView({ handle }: { handle: string }) {
 
   if (state.kind === "loading") {
     return (
-      <div aria-hidden="true" className="flex flex-col gap-6">
-        <div className="skeleton h-24 w-24 rounded-full sm:h-28 sm:w-28" />
-        <div className="skeleton h-10 w-64" />
-        <div className="skeleton h-4 w-40" />
+      // Same footprint as the header that replaces it: avatar, name, meta.
+      <div
+        aria-hidden="true"
+        className="flex flex-col gap-6 lg:flex-row lg:items-end lg:gap-10"
+      >
+        <div className="skeleton size-28 shrink-0 rounded-full sm:size-36" />
+        <div className="flex flex-col gap-4">
+          <div className="skeleton h-4 w-32" />
+          <div className="skeleton h-14 w-72 sm:h-[4.5rem] sm:w-[28rem]" />
+          <div className="skeleton h-4 w-56" />
+        </div>
       </div>
     );
   }
 
   if (state.kind === "notFound") {
     return (
-      <div className="max-w-md">
-        <h1 className="font-display text-4xl tracking-tight">
+      <div className="max-w-xl">
+        <h1 className="text-5xl font-medium leading-[1] sm:text-6xl">
           Nothing on this shelf
         </h1>
-        <p className="mt-4 text-ink-muted">
+        <p className="mt-5 text-lg text-ink-muted">
           Nobody has claimed @{handle} yet. It could be yours.
         </p>
-        <Link
-          href="/login"
-          className="liquid-glass mt-6 inline-flex min-h-11 items-center rounded-full px-6 text-sm text-ink transition-opacity duration-200 hover:opacity-90"
-        >
+        <Link href="/login" className="btn btn-primary mt-8">
           Claim your page
         </Link>
       </div>
@@ -132,15 +136,15 @@ export function ProfileView({ handle }: { handle: string }) {
 
   if (state.kind === "private") {
     return (
-      <div className="max-w-md">
-        <h1 className="font-display text-4xl tracking-tight">
+      <div className="max-w-xl">
+        <h1 className="text-5xl font-medium leading-[1] sm:text-6xl">
           This page is followers-only
         </h1>
-        <p className="mt-4 text-ink-muted">
+        <p className="mt-5 text-lg text-ink-muted">
           @{handle} shares their shelves with followers. Request to follow,
           and once they approve you, their shelves open up.
         </p>
-        <div className="mt-6">
+        <div className="mt-8">
           <FollowButton
             targetUid={state.uid}
             targetIsPublic={false}
@@ -166,72 +170,89 @@ export function ProfileView({ handle }: { handle: string }) {
 
   return (
     <div>
-      <header className="reveal flex flex-wrap items-center gap-6">
-        <Avatar
-          src={profile.avatarUrl}
-          name={profile.displayName}
-          alt={`${profile.displayName}'s profile picture`}
-          className="size-24 rounded-full border border-edge bg-surface text-3xl sm:size-28 sm:text-4xl"
-        />
-        <div className="min-w-0">
-          <h1 className="font-display text-4xl tracking-tight sm:text-5xl">
-            {profile.displayName}
-          </h1>
-          <p className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-ink-muted">
-            <span className="font-label">@{profile.handle}</span>
-            <span>
-              <Link
-                href={`/u/${profile.handle}/followers`}
-                className="transition-colors duration-200 hover:text-ink"
-              >
-                {counts.followers} followers
-              </Link>
-              {" · "}
-              <Link
-                href={`/u/${profile.handle}/following`}
-                className="transition-colors duration-200 hover:text-ink"
-              >
-                {counts.following} following
-              </Link>
-            </span>
-          </p>
-          {profile.bio ? (
-            <p className="mt-3 max-w-xl text-ink-muted">{profile.bio}</p>
-          ) : null}
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={toggleLayout}
-            aria-label={
-              layout === "grid"
-                ? "Switch to the stacked layout"
-                : "Switch to the compact grid layout"
-            }
-            className="liquid-glass flex min-h-11 items-center gap-2 rounded-full px-5 text-sm text-ink transition-opacity duration-200 hover:opacity-90"
-          >
-            {layout === "grid" ? (
-              <LayoutList aria-hidden="true" className="size-4" />
-            ) : (
-              <LayoutGrid aria-hidden="true" className="size-4" />
-            )}
-            <span>{layout === "grid" ? "Stacked" : "Grid"}</span>
-          </button>
-          {isOwner ? (
-            <Link
-              href="/settings"
-              className="liquid-glass flex min-h-11 items-center rounded-full px-6 text-sm text-ink transition-opacity duration-200 hover:opacity-90"
+      <header>
+        <div className="grid gap-x-10 gap-y-7 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-end">
+          <Avatar
+            src={profile.avatarUrl}
+            name={profile.displayName}
+            alt={`${profile.displayName}'s profile picture`}
+            className="enter-up size-28 rounded-full border border-edge bg-surface-raised text-5xl sm:size-36 sm:text-6xl"
+          />
+          <div className="min-w-0">
+            <h1 className="text-balance break-words text-5xl font-medium leading-[1] tracking-[-0.04em] sm:text-6xl lg:text-7xl">
+              <span className="enter-line">
+                <span>{profile.displayName}</span>
+              </span>
+            </h1>
+            <p
+              className="enter-up mt-3 flex flex-wrap items-center gap-x-5 text-ink-muted"
+              style={{ "--enter-i": 1 } as React.CSSProperties}
             >
-              Edit profile
-            </Link>
-          ) : (
-            <FollowButton
-              targetUid={uid}
-              targetIsPublic={profile.isPublic}
-              onChanged={() => void loadCounts(uid)}
-              variant="glass"
-            />
-          )}
+              <span>@{profile.handle}</span>
+              <span className="flex items-center gap-5">
+                <Link
+                  href={`/u/${profile.handle}/followers`}
+                  className="inline-flex min-h-11 items-center hover:text-ink"
+                >
+                  <span className="link">
+                    <span className="font-label text-ink">{counts.followers}</span>{" "}
+                    followers
+                  </span>
+                </Link>
+                <Link
+                  href={`/u/${profile.handle}/following`}
+                  className="inline-flex min-h-11 items-center hover:text-ink"
+                >
+                  <span className="link">
+                    <span className="font-label text-ink">{counts.following}</span>{" "}
+                    following
+                  </span>
+                </Link>
+              </span>
+            </p>
+            {profile.bio ? (
+              <p
+                className="enter-up mt-2 max-w-2xl text-lg leading-relaxed text-ink-muted"
+                style={{ "--enter-i": 2 } as React.CSSProperties}
+              >
+                {profile.bio}
+              </p>
+            ) : null}
+          </div>
+          <div
+            className="enter-up flex flex-wrap items-center gap-3 lg:pb-2"
+            style={{ "--enter-i": 3 } as React.CSSProperties}
+          >
+            <button
+              type="button"
+              onClick={toggleLayout}
+              aria-label={
+                layout === "grid"
+                  ? "Switch to the stacked layout"
+                  : "Switch to the compact grid layout"
+              }
+              className="btn"
+            >
+              {layout === "grid" ? (
+                <LayoutList aria-hidden="true" className="size-4" />
+              ) : (
+                <LayoutGrid aria-hidden="true" className="size-4" />
+              )}
+              <span>{layout === "grid" ? "Stacked" : "Grid"}</span>
+            </button>
+            {isOwner ? (
+              <Link href="/settings" className="btn btn-primary">
+                Edit profile
+              </Link>
+            ) : (
+              <FollowButton
+                targetUid={uid}
+                targetIsPublic={profile.isPublic}
+                onChanged={() => void loadCounts(uid)}
+                variant="glass"
+              />
+            )}
+          </div>
         </div>
       </header>
 
@@ -239,15 +260,14 @@ export function ProfileView({ handle }: { handle: string }) {
         <ProfileGrid uid={uid} isOwner={isOwner} />
       ) : (
         <>
-          <div className="mt-12">
-            {CATEGORY_ORDER.map((category, i) => (
+          <div className="mt-8">
+            {CATEGORY_ORDER.map((category) => (
               <ShelfRow
                 key={category}
                 uid={uid}
                 shelfKey={category}
                 label={CATEGORY_LABELS[category]}
                 isOwner={isOwner}
-                revealDelay={120 + i * 90}
                 addHref={`/library?category=${category}`}
               />
             ))}
@@ -257,7 +277,6 @@ export function ProfileView({ handle }: { handle: string }) {
               shelfKey={WATCHLIST}
               label="Watchlist"
               isOwner={isOwner}
-              revealDelay={120 + CATEGORY_ORDER.length * 90}
               addHref="/library"
               mixed
             />

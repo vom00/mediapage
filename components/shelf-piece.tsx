@@ -9,9 +9,9 @@ function coverAlt(item: MediaItem): string {
 }
 
 // Renders a single shelf pick as its category's physical object:
-// a blu-ray case, a TV playing the cover, a vinyl record, a game
-// case, or a hardcover book. Monochrome chrome around the real
-// (color) cover art. Fills its positioned parent (the .shelf-case
+// a blu-ray case, a tablet playing the cover, a vinyl record, a game
+// case, or a hardcover book. Flat chrome around the real
+// cover art. Fills its positioned parent (the .shelf-case
 // aspect box).
 export function ShelfPiece({ item }: { item: MediaItem }) {
   const kind = pieceKind(item.category);
@@ -37,7 +37,6 @@ export function ShelfPiece({ item }: { item: MediaItem }) {
           <span className="piece-tablet-cam" aria-hidden="true" />
           <div className="piece-tablet-screen">
             <CoverImage src={item.imageUrl} alt={alt} />
-            <span className="piece-tablet-glare" aria-hidden="true" />
           </div>
           <span className="piece-tablet-home" aria-hidden="true" />
         </div>
@@ -53,7 +52,6 @@ export function ShelfPiece({ item }: { item: MediaItem }) {
         </div>
         <span className="piece-book-pages" aria-hidden="true" />
         <span className="piece-book-spine" aria-hidden="true" />
-        <span className="piece-book-sheen" aria-hidden="true" />
       </div>
     );
   }
@@ -77,7 +75,6 @@ export function ShelfPiece({ item }: { item: MediaItem }) {
           </svg>
         </span>
         <span className="piece-game-spine" aria-hidden="true" />
-        <span className="piece-game-sheen" aria-hidden="true" />
       </div>
     );
   }

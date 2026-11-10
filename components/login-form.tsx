@@ -19,6 +19,9 @@ import { auth } from "@/lib/firebase/client";
 
 type Mode = "login" | "signup";
 
+// Position in the one first-screen entrance (see .enter-up).
+const step = (i: number) => ({ "--enter-i": i }) as React.CSSProperties;
+
 export function LoginForm() {
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
@@ -54,17 +57,24 @@ export function LoginForm() {
   }
 
   return (
-    <div className="reveal mx-auto w-full max-w-md border border-edge bg-surface p-8 sm:p-10">
-      <h1 className="font-display text-3xl tracking-tight">
-        {mode === "login" ? "Log in" : "Create your page"}
+    <div className="card mx-auto w-full max-w-md p-7 sm:p-10">
+      <h1 className="text-4xl leading-[1.05] sm:text-5xl">
+        <span className="enter-line">
+          <span>{mode === "login" ? "Log in" : "Create your page"}</span>
+        </span>
       </h1>
-      <p className="mt-2 text-sm text-ink-muted">
+      <p className="enter-up mt-4 text-base text-ink-muted" style={step(1)}>
         {mode === "login"
           ? "Welcome back to your shelves."
-          : "Six shelves are waiting for your five favorites each."}
+          : "Five shelves are waiting for your five favorites each."}
       </p>
 
-      <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-5" noValidate>
+      <form
+        onSubmit={handleSubmit}
+        className="enter-up mt-8 flex flex-col gap-5"
+        style={step(2)}
+        noValidate
+      >
         <div>
           <label htmlFor="email" className={labelClass}>
             Email
@@ -107,12 +117,22 @@ export function LoginForm() {
           </div>
         ) : null}
 
-        <button type="submit" disabled={busy} className={buttonClass}>
+        <button type="submit" disabled={busy} className={`${buttonClass} mt-1`}>
           {mode === "login" ? "Log in" : "Sign up"}
         </button>
       </form>
 
-      <div className="mt-6 flex flex-col gap-3">
+      <div
+        aria-hidden="true"
+        className="enter-up my-6 flex items-center gap-4 text-sm text-ink-muted"
+        style={step(3)}
+      >
+        <span className="h-px flex-1 bg-edge" />
+        or
+        <span className="h-px flex-1 bg-edge" />
+      </div>
+
+      <div className="enter-up flex flex-col gap-3" style={step(3)}>
         <button type="button" onClick={handleGoogle} className={ghostButtonClass}>
           Continue with Google
         </button>
@@ -122,7 +142,7 @@ export function LoginForm() {
             setMode(mode === "login" ? "signup" : "login");
             setError(null);
           }}
-          className={ghostButtonClass}
+          className={`${ghostButtonClass} btn-quiet`}
         >
           {mode === "login" ? "Create account" : "Log in instead"}
         </button>
