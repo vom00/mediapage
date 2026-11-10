@@ -5,7 +5,9 @@
    the visitor has not asked to reduce motion. Under reduce, the hero
    stands over the poster for one screen and nothing is pinned.
    Below it: the pinned chapters, the five shelves on the inverse band,
-   and the close. Grounds are flat tokens; a divider is a 1px line. */
+   and the close under a moving row of formats. Grounds are flat tokens;
+   a divider is a 1px line. A shelf's hue shows as a 2px rule or a fill
+   under the pointer, never as a dot beside a name. */
 
 .room-page {
   /* Run the room up under the sticky glass nav: the scene is the
@@ -53,15 +55,6 @@
 
 .room-scene[data-mode="live"] .room-canvas {
   opacity: 1;
-}
-
-/* A small shelf-hue dot beside a shelf name. */
-.lp-dot {
-  display: inline-block;
-  flex: none;
-  width: 8px;
-  height: 8px;
-  border-radius: 9999px;
 }
 
 /* ---- Hero ---- */
@@ -168,19 +161,11 @@
 }
 
 .room-caption-name {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
   font-size: clamp(1.75rem, 2.6vw, 2.25rem);
   font-weight: 500;
   line-height: 1.1;
   letter-spacing: -0.035em;
   color: var(--text);
-}
-
-.room-caption-name .lp-dot {
-  width: 10px;
-  height: 10px;
 }
 
 .room-caption-line {
@@ -190,13 +175,22 @@
   color: var(--text-muted);
 }
 
+/* The room's controls: pause (once the live scene is up) and skip.
+   Stacked on tall screens, where the caption runs along the bottom. */
 .room-skip {
   position: absolute;
   right: 1rem;
   bottom: 1.25rem;
   z-index: 3;
   display: none;
-  visibility: hidden;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+@media (min-aspect-ratio: 11/10) {
+  .room-skip {
+    flex-direction: row;
+  }
 }
 
 .room-skip-btn {
@@ -224,9 +218,12 @@
     top: 0;
   }
 
-  .room-captions,
-  .room-skip {
+  .room-captions {
     display: block;
+  }
+
+  .room-skip {
+    display: flex;
   }
 }
 
@@ -234,7 +231,8 @@
    Without script, under reduced motion and on phones: three steps, each
    followed by its frame, stacked and all visible. With data-pinned (set
    by the component where the viewport suits it) the section is two
-   screens tall, its content holds with position: sticky, and the frames
+   screens tall, its content holds with position: sticky, the steps work
+   as an accordion (only the open one shows its body) and the frames
    share one cell and crossfade as the steps open. */
 
 .lp-chap {
@@ -251,8 +249,9 @@
 }
 
 .lp-chap-head {
-  font-size: clamp(1.75rem, 3vw, 2.25rem);
-  line-height: 1.1;
+  font-size: clamp(1.75rem, 3.4vw, 3rem);
+  line-height: 1.05;
+  letter-spacing: -0.04em;
 }
 
 .lp-chap-step {
@@ -267,14 +266,15 @@
 
 .lp-chap-title {
   text-wrap: balance;
-  font-size: clamp(1.375rem, 2.4vw, 1.75rem);
+  font-size: clamp(1.375rem, 2.4vw, 1.875rem);
   line-height: 1.2;
   color: var(--text);
 }
 
 .lp-chap-body {
-  margin-top: 0.625rem;
+  padding-top: 0.625rem;
   max-width: 28rem;
+  font-size: 1.0625rem;
   color: var(--text-muted);
   line-height: 1.6;
 }
@@ -303,9 +303,11 @@
   margin: 0 auto;
   padding-inline: 1.5rem;
   display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.2fr);
-  grid-template-rows: auto auto auto auto auto;
-  column-gap: clamp(2rem, 5vw, 4rem);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+  /* The last row takes any height a frame needs beyond the steps, so the
+     steps never spread apart. */
+  grid-template-rows: auto auto auto auto auto 1fr;
+  column-gap: clamp(2rem, 6vw, 5rem);
   align-items: start;
 }
 
@@ -321,8 +323,7 @@
 .lp-chap[data-pinned] .lp-chap-text {
   grid-column: 1;
   grid-row: var(--row);
-  margin-top: 2rem;
-  /* Reserve the open step's room so nothing moves as steps open. */
+  margin-top: 1.75rem;
   border-left-color: color-mix(in srgb, var(--text) calc(var(--k, 0) * 22%), var(--border));
 }
 
@@ -341,23 +342,39 @@
   color: color-mix(in srgb, var(--text) calc(var(--k, 0) * 100%), var(--text-muted));
 }
 
+/* The fold: a step's body takes room only as far as the step is open
+   (--k, from the scroll), up to its own height (--h, measured by the
+   component). */
+.lp-chap[data-pinned] .lp-chap-fold {
+  height: calc(var(--k, 0) * var(--h, 6rem));
+  overflow: hidden;
+}
+
 .lp-chap[data-pinned] .lp-chap-body {
   opacity: var(--k, 0);
 }
 
 .lp-chap[data-pinned] .lp-frame {
   grid-column: 2;
-  grid-row: 1 / span 5;
+  grid-row: 1 / -1;
   align-self: center;
   max-width: none;
+  /* The three frames share one cell: a common floor keeps the card from
+     changing size as they crossfade. */
+  min-height: 20rem;
   margin-top: 0;
-  height: min(22rem, calc(100svh - 12rem));
 }
 
+/* The link under the steps gives back whatever the open folds are
+   short of the tallest one, so the column keeps one height and the page
+   does not shift while the steps trade places. */
 .lp-chap[data-pinned] .lp-chap-more {
   grid-column: 1;
   grid-row: 5;
-  margin-top: 2.5rem;
+  margin-top: calc(
+    2.25rem + var(--h-max, 6rem) - var(--k0, 1) * var(--h0, 6rem) - var(--k1, 0) * var(--h1, 6rem) -
+      var(--k2, 0) * var(--h2, 6rem)
+  );
 }
 
 /* ---- Frames: the product's own interface, drawn in live HTML ---- */
@@ -366,15 +383,14 @@
   position: relative;
   max-width: 36rem;
   margin-top: 1.5rem;
-  padding: 1.5rem;
+  padding: clamp(1.25rem, 3vw, 2rem);
   display: flex;
   flex-direction: column;
   justify-content: center;
 }
 
-/* The shelf frame leaves a clear strip for its pause button. */
-.lp-frame[data-frame="shelf"] {
-  padding-bottom: 3.5rem;
+.lp-frame-in {
+  position: relative;
 }
 
 .lp-pic {
@@ -386,9 +402,12 @@
 .lp-pic-head {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 0.9375rem;
+  gap: 0.625rem;
+  min-height: 2rem;
+  font-size: 1.25rem;
   font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1;
 }
 
 .lp-strong {
@@ -397,9 +416,6 @@
 }
 
 .lp-muted {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
   font-size: 0.8125rem;
   color: var(--text-muted);
 }
@@ -444,7 +460,7 @@
 }
 
 .lp-rec-note {
-  font-size: 1.0625rem;
+  font-size: 1.125rem;
   line-height: 1.55;
   color: var(--text);
 }
@@ -463,6 +479,34 @@
 
 .lp-person + .lp-person {
   border-top: 1px solid var(--border);
+}
+
+/* The follow button in the people frame: both labels share one cell, so
+   the button keeps its size whichever one shows. */
+.lp-follow {
+  display: inline-grid;
+  flex: none;
+}
+
+.lp-follow > .btn {
+  grid-area: 1 / 1;
+}
+
+.lp-follow-on {
+  visibility: hidden;
+}
+
+/* The shelf in the first frame: five covers standing on its plank, the
+   plank's edge in the shelf's hue. */
+.lp-shelf {
+  display: flex;
+  flex-direction: column;
+}
+
+.lp-plank {
+  height: 12px;
+  background: var(--surface-raised);
+  border-top: 2px solid var(--shelf-movies);
 }
 
 /* Typographic covers: a flat block, the title set in Geist. */
@@ -507,11 +551,12 @@
   flex: none;
 }
 
-/* The pause button for the one loop, bottom-right of its frame. */
+/* The pause button for a frame's loop: top right, level with the
+   frame's heading. */
 .lp-pause {
   position: absolute;
-  right: 12px;
-  bottom: 12px;
+  top: 0;
+  right: 0;
   display: none;
   width: 32px;
   min-height: 32px;
@@ -535,11 +580,14 @@
   }
 }
 
-/* ---- The card loop: one cover moves one place and settles ----
-   3.2s (--m-cycle). It starts from its finished picture, shows no empty
-   state, and holds for most of the cycle: one move out, one move back,
-   each 290ms, the rest still. Only runs where script has switched it on
-   and the visitor has not asked to reduce motion. */
+/* ---- The card loops ----
+   Both run on one 3.2s cycle (--m-cycle), start from their finished
+   picture, show no empty state and hold for most of the cycle. In the
+   shelf frame one cover moves one place and settles back (290ms each
+   way). In the people frame the first Follow is pressed, reads Following
+   for half the cycle, and is released. They only run where script has
+   switched them on and the visitor has not asked to reduce motion, and
+   the frame's pause button holds them. */
 
 @keyframes lp-slide-left {
   0%,
@@ -577,13 +625,65 @@
   }
 }
 
+@keyframes lp-follow-press {
+  0%,
+  24%,
+  33%,
+  74%,
+  83%,
+  100% {
+    scale: 1;
+  }
+  28.5%,
+  78.5% {
+    scale: 0.94;
+  }
+}
+
+@keyframes lp-follow-off {
+  0%,
+  28.4% {
+    visibility: visible;
+  }
+  28.5%,
+  78.4% {
+    visibility: hidden;
+  }
+  78.5%,
+  100% {
+    visibility: visible;
+  }
+}
+
+@keyframes lp-follow-on {
+  0%,
+  28.4% {
+    visibility: hidden;
+  }
+  28.5%,
+  78.4% {
+    visibility: visible;
+  }
+  78.5%,
+  100% {
+    visibility: hidden;
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .lp-chap[data-loop] .lp-pause {
     display: grid;
   }
 
+  /* Leave the heading clear of the button. */
+  .lp-chap[data-loop] .lp-pic-head {
+    padding-right: 2.75rem;
+  }
+
   .lp-chap[data-loop] .lp-cv-left,
-  .lp-chap[data-loop] .lp-cv-right {
+  .lp-chap[data-loop] .lp-cv-right,
+  .lp-chap[data-loop] .lp-follow-loop,
+  .lp-chap[data-loop] .lp-follow-loop > .btn {
     animation: var(--m-cycle) var(--ease) infinite;
   }
 
@@ -597,18 +697,47 @@
     animation-name: lp-slide-right;
   }
 
+  .lp-chap[data-loop] .lp-follow-loop {
+    animation-name: lp-follow-press;
+  }
+
+  .lp-chap[data-loop] .lp-follow-loop > .lp-follow-off {
+    animation-name: lp-follow-off;
+    animation-timing-function: step-end;
+  }
+
+  .lp-chap[data-loop] .lp-follow-loop > .lp-follow-on {
+    animation-name: lp-follow-on;
+    animation-timing-function: step-end;
+  }
+
   .lp-chap[data-paused] .lp-cv-left,
-  .lp-chap[data-paused] .lp-cv-right {
+  .lp-chap[data-paused] .lp-cv-right,
+  .lp-chap[data-paused] .lp-follow-loop,
+  .lp-chap[data-paused] .lp-follow-loop > .btn {
     animation-play-state: paused;
   }
 }
 
-/* ---- The five shelves: the page's one light band ---- */
+/* ---- The five shelves: the page's one light band ----
+   One screen under the nav, whatever its height: the type and the rows
+   are sized from the viewport's height as well as its width. Each row is
+   a link into the library; under the pointer the row fills with its
+   shelf's hue from the left, the name steps aside and an arrow arrives. */
+
+.lp-idx {
+  --idx-pad: clamp(2rem, 6svh, 4.5rem);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: calc(100svh - 4rem);
+}
 
 .lp-idx-in {
+  width: 100%;
   max-width: 72rem;
   margin: 0 auto;
-  padding: 5rem 1rem 5rem;
+  padding: var(--idx-pad) 1rem;
 }
 
 @media (min-width: 640px) {
@@ -619,51 +748,68 @@
 
 .lp-idx-title {
   /* Arriving by anchor, the band's top edge lands under the sticky nav. */
-  scroll-margin-top: 9rem;
-  font-size: clamp(1.75rem, 3vw, 2.25rem);
-  line-height: 1.1;
+  scroll-margin-top: calc(4rem + var(--idx-pad));
+  font-size: clamp(1.75rem, 3.4vw, 3rem);
+  line-height: 1.05;
+  letter-spacing: -0.04em;
 }
 
 .lp-idx-list {
-  margin-top: 2.5rem;
+  margin-top: clamp(1.25rem, 4svh, 2.5rem);
   border-bottom: 1px solid color-mix(in srgb, var(--inv-text) 16%, transparent);
 }
 
 .lp-idx-row {
-  display: grid;
-  gap: 0.5rem 2rem;
-  padding: 1.5rem 0;
   border-top: 1px solid color-mix(in srgb, var(--inv-text) 16%, transparent);
 }
 
+.lp-idx-link {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  gap: 0.375rem 2rem;
+  padding: clamp(0.75rem, 2.2svh, 1.75rem) 0;
+  color: inherit;
+  text-decoration: none;
+}
+
 @media (min-width: 768px) {
-  .lp-idx-row {
+  .lp-idx-link {
     grid-template-columns: minmax(0, 1fr) minmax(0, 20rem);
     align-items: center;
-    padding: 1.75rem 0;
   }
 }
 
+/* The hue fill: bleeds a little past the text on both sides. */
+.lp-idx-link::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0 -0.75rem;
+  border-radius: var(--radius-sm);
+  background: var(--hue);
+  transform: scaleX(0);
+  transform-origin: right center;
+  transition: transform 220ms var(--ease);
+}
+
+.lp-idx-link:focus-visible {
+  outline: 2px solid var(--inv-text);
+  outline-offset: 2px;
+}
+
 .lp-idx-name {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  font-size: clamp(2.5rem, 7vw, 5.5rem);
+  font-size: clamp(2rem, min(11vw, 9.5svh), 5.5rem);
   font-weight: 500;
   line-height: 1;
   letter-spacing: -0.045em;
-}
-
-.lp-dot-lg {
-  width: 14px;
-  height: 14px;
-  /* The pale shelf hues need an edge on the light band. */
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--inv-text) 22%, transparent);
+  transition: translate 220ms var(--ease);
 }
 
 .lp-idx-line {
   font-size: 1rem;
   line-height: 1.5;
+  transition: color 220ms var(--ease);
 }
 
 @media (min-width: 768px) {
@@ -672,16 +818,193 @@
   }
 }
 
-/* ---- The close ---- */
+.lp-idx-name {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.12em;
+}
 
-.lp-close {
+/* The arrow rides at the name's shoulder and only shows under the
+   pointer or focus. */
+.lp-idx-arrow {
+  flex: none;
+  width: 0.42em;
+  height: 0.42em;
+  margin-top: 0.08em;
+  opacity: 0;
+  translate: -0.12em 0.12em;
+  transition:
+    opacity 220ms var(--ease),
+    translate 220ms var(--ease);
+}
+
+.lp-idx-link:focus-visible::before {
+  transform: scaleX(1);
+  transform-origin: left center;
+}
+
+.lp-idx-link:focus-visible .lp-idx-line {
+  color: var(--inv-text);
+}
+
+.lp-idx-link:focus-visible .lp-idx-arrow {
+  opacity: 1;
+  translate: 0 0;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .lp-idx-link:hover::before {
+    transform: scaleX(1);
+    transform-origin: left center;
+    transition-duration: 320ms;
+  }
+
+  .lp-idx-link:hover .lp-idx-name {
+    translate: 0.375rem 0;
+  }
+
+  .lp-idx-link:hover .lp-idx-line {
+    color: var(--inv-text);
+  }
+
+  .lp-idx-link:hover .lp-idx-arrow {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-idx-link::before,
+  .lp-idx-name,
+  .lp-idx-arrow {
+    transition: none;
+  }
+
+  .lp-idx-link:hover .lp-idx-name {
+    translate: none;
+  }
+}
+
+/* ---- The formats row ----
+   What goes on the shelves, set large and moving slowly sideways in a
+   loop that fades at both edges. It holds under the pointer and while
+   off screen, and carries a pause button. Without script, under reduced
+   motion and on phones the words stand in a wrapped row. */
+
+.lp-mq {
+  --mq-gap: clamp(2rem, 5vw, 4.5rem);
+  position: relative;
+  padding-block: clamp(2.5rem, 7svh, 4.5rem);
+  border-bottom: 1px solid var(--border);
+}
+
+.lp-mq-in {
+  position: relative;
   max-width: 72rem;
   margin: 0 auto;
-  padding: 6rem 1rem 7rem;
+  padding-inline: 1rem;
 }
 
 @media (min-width: 640px) {
-  .lp-close {
+  .lp-mq-in {
+    padding-inline: 1.5rem;
+  }
+}
+
+.lp-mq-rail {
+  display: flex;
+  gap: var(--mq-gap);
+}
+
+.lp-mq-track {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem var(--mq-gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: clamp(1.75rem, 5vw, 4rem);
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+  color: color-mix(in srgb, var(--text) 46%, var(--bg));
+}
+
+.lp-mq-copy,
+.lp-mq-pause {
+  display: none;
+}
+
+@keyframes lp-mq {
+  to {
+    transform: translateX(calc(-1 * var(--mq-w, 1000px) - var(--mq-gap)));
+  }
+}
+
+/* The rail stops short of the pause button, which stands clear of the
+   moving words at the content edge. */
+.lp-mq[data-live] .lp-mq-rail {
+  margin-right: 3.5rem;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+}
+
+.lp-mq[data-live] .lp-mq-track {
+  flex: none;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  animation: lp-mq var(--mq-dur, 40s) linear infinite;
+  animation-play-state: paused;
+  will-change: transform;
+}
+
+.lp-mq[data-live] .lp-mq-copy {
+  display: flex;
+}
+
+.lp-mq[data-live][data-on]:not([data-paused]) .lp-mq-track {
+  animation-play-state: running;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .lp-mq[data-live][data-on]:hover .lp-mq-track {
+    animation-play-state: paused;
+  }
+}
+
+.lp-mq[data-live] .lp-mq-pause {
+  position: absolute;
+  top: 50%;
+  right: 1.5rem;
+  display: grid;
+  width: 32px;
+  min-height: 32px;
+  height: 32px;
+  margin-top: -16px;
+  padding: 0;
+  border-color: var(--border);
+  background: var(--surface-raised);
+  color: var(--text);
+}
+
+.lp-mq-pause::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+}
+
+/* ---- The close ---- */
+
+.lp-close-in {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: clamp(3.5rem, 10svh, 6rem) 1rem clamp(4rem, 12svh, 7rem);
+}
+
+@media (min-width: 640px) {
+  .lp-close-in {
     padding-inline: 1.5rem;
   }
 }

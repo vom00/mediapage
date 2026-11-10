@@ -1,10 +1,11 @@
 #!/usr/bin/env node
-// Builds the landing room's model pack: public/models/room.glb.
+// Builds the landing room's models: public/models/room.glb (furniture),
+// resident.glb (the person who walks the room) and cat.glb.
 //
-//   node scripts/build-models.mjs [path/to/kenney]
+//   node scripts/build-models.mjs [path/to/kenney] [--creatures]
 //
-// Source: Kenney's Furniture Kit and Mini Arcade (both CC0,
-// https://kenney.nl). The source folder is treated as data only — we
+// Source: Kenney's Furniture Kit, Mini Arcade, Mini Characters and Cube
+// Pets (all CC0, https://kenney.nl). The source folder is treated as data only — we
 // copy .glb/.png files out of it and never run anything inside it.
 //
 // Pipeline (gltf-transform, run through npx so it stays out of the
@@ -26,7 +27,7 @@ import { fileURLToPath } from "node:url";
 const GLTF_TRANSFORM = "@gltf-transform/cli@4.2.1";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const kenney = path.resolve(
-  process.argv[2] ??
+  process.argv.slice(2).find((a) => !a.startsWith("--")) ??
     process.env.KENNEY_DIR ??
     path.join(
       os.tmpdir(),
@@ -64,6 +65,23 @@ const FURNITURE = [
 ];
 const ARCADE = ["arcade-machine"];
 
+// Animated models ship on their own: each brings its own colormap, and
+// only the clips the scene plays are kept.
+const CREATURES = [
+  {
+    out: "resident.glb",
+    dir: "mini-characters/Models/GLB format",
+    file: "character-male-f.glb",
+    clips: ["idle", "walk", "emote-yes", "interact-right"],
+  },
+  {
+    out: "cat.glb",
+    dir: "cube-pets/Models/GLB format",
+    file: "animal-cat.glb",
+    clips: ["idle"],
+  },
+];
+
 const outDir = path.join(root, "public/models");
 const outFile = path.join(outDir, "room.glb");
 
@@ -78,7 +96,58 @@ function run(args) {
   }
 }
 
+/** Copies a .glb, keeping only the named animation clips. Data the
+ *  dropped clips used is left for prune to remove. */
+function copyWithClips(src, dest, clips) {
+  const glb = fs.readFileSync(src);
+  const jsonLength = glb.readUInt32LE(12);
+  const json = JSON.parse(glb.subarray(20, 20 + jsonLength).toString("utf8"));
+  const rest = glb.subarray(20 + jsonLength);
+  json.animations = (json.animations ?? []).filter((a) => clips.includes(a.name));
+  let text = Buffer.from(JSON.stringify(json), "utf8");
+  const pad = (4 - (text.length % 4)) % 4;
+  if (pad) text = Buffer.concat([text, Buffer.alloc(pad, 0x20)]);
+  const header = Buffer.alloc(20);
+  glb.copy(header, 0, 0, 12);
+  header.writeUInt32LE(20 + text.length + rest.length, 8);
+  header.writeUInt32LE(text.length, 12);
+  header.writeUInt32LE(0x4e4f534a, 16); // "JSON"
+  fs.writeFileSync(dest, Buffer.concat([header, text, rest]));
+}
+
+function buildCreature({ out, dir, file, clips }) {
+  const source = path.join(kenney, dir);
+  if (!fs.existsSync(path.join(source, file))) {
+    throw new Error(`Kenney model not found at ${path.join(source, file)}.`);
+  }
+  const stage = fs.mkdtempSync(path.join(os.tmpdir(), "room-creature-"));
+  try {
+    fs.mkdirSync(path.join(stage, "Textures"));
+    fs.copyFileSync(
+      path.join(source, "Textures/colormap.png"),
+      path.join(stage, "Textures/colormap.png"),
+    );
+    const staged = path.join(stage, "in.glb");
+    copyWithClips(path.join(source, file), staged, clips);
+    const pruned = path.join(stage, "pruned.glb");
+    // Joints are empty leaf nodes; pruning them would drop the skins.
+    run(["prune", staged, pruned, "--keep-leaves", "true"]);
+    const dest = path.join(outDir, out);
+    run(["meshopt", pruned, dest, "--level", "medium"]);
+    const kb = (fs.statSync(dest).size / 1024).toFixed(1);
+    console.log(`\nwrote ${path.relative(root, dest)} (${kb} KB)`);
+  } finally {
+    fs.rmSync(stage, { recursive: true, force: true });
+  }
+}
+
 function main() {
+  if (process.argv.includes("--creatures")) {
+    fs.mkdirSync(outDir, { recursive: true });
+    for (const creature of CREATURES) buildCreature(creature);
+    return;
+  }
+
   for (const dir of [furnitureDir, arcadeDir]) {
     if (!fs.existsSync(dir)) {
       throw new Error(`Kenney models not found at ${dir}. Pass the kenney folder as the first argument.`);
@@ -121,6 +190,8 @@ function main() {
   } finally {
     fs.rmSync(stage, { recursive: true, force: true });
   }
+
+  for (const creature of CREATURES) buildCreature(creature);
 }
 
 main();

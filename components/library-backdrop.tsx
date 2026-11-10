@@ -1,6 +1,7 @@
 import { LibraryExplorer, LibraryStrider } from "@/components/library-explorer";
 
-// The pixel library hall: tiered rows of book spines in dim greys, drifting
+// The pixel library hall: rows of book spines in dim greys climbing the
+// whole wall and fading toward the ceiling, drifting
 // dust, a 16-bit librarian browsing the stacks, and a flat dimming layer
 // that keeps the page content legible. Purely decorative; fully inert under
 // reduced motion. Place inside a `relative` container with content above it.
@@ -20,9 +21,16 @@ export function LibraryBackdrop() {
       aria-hidden="true"
       className="absolute inset-0 overflow-hidden"
     >
-      <div className="library-row library-row-far" />
-      <div className="library-row library-row-mid" />
-      <div className="library-row library-row-near" />
+      <div className="library-wall">
+        <div className="library-row library-row-last" />
+        <div className="library-row library-row-top" />
+        <div className="library-row library-row-upper" />
+        <div className="library-row library-row-higher" />
+        <div className="library-row library-row-high" />
+        <div className="library-row library-row-far" />
+        <div className="library-row library-row-mid" />
+        <div className="library-row library-row-near" />
+      </div>
       {MOTES.map((mote, i) => (
         <span key={i} className="mote" style={mote} />
       ))}

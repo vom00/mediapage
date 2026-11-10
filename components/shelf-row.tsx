@@ -123,7 +123,6 @@ export function ShelfRow({
       }
     >
       <div className="flex items-center gap-3">
-        <span aria-hidden="true" className="shelf-mark" />
         <h2
           id={`shelf-${shelfKey}`}
           className="text-2xl font-medium leading-none sm:text-3xl"

@@ -74,8 +74,14 @@ export function HomeFeed() {
         </div>
       ) : (
         <div className="mt-12 flex flex-col gap-6">
-          {feed.map((rec) => (
-            <RecommendationCard key={rec.id} rec={rec} />
+          {feed.map((rec, index) => (
+            <div
+              key={rec.id}
+              className="arrive"
+              style={{ "--arrive-i": index } as React.CSSProperties}
+            >
+              <RecommendationCard rec={rec} />
+            </div>
           ))}
         </div>
       )}

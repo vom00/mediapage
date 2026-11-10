@@ -6,9 +6,12 @@ import { useEffect, useRef, useState } from "react";
 
 // The page's pinned moment: three steps open one at a time while the
 // section holds still with position: sticky and the page scrolls
-// natively. Beside them one frame shows the product's own interface for
-// the open step and crossfades as the next opens. The scrub follows the
-// scrollbar, so it runs backwards on the way up.
+// natively. The steps work as an accordion: only the open one shows its
+// body, so the column carries no empty room. Beside them one frame shows
+// the product's own interface for the open step and crossfades as the
+// next opens. The scrub follows the scrollbar, so it runs backwards on
+// the way up. Two of the frames hold a short loop (a cover changing
+// places, a Follow being pressed); each has a pause button.
 //
 // Everything rests visible and stacked without script, under reduced
 // motion and on phones: the pinned layout (data-pinned) is only switched
@@ -60,6 +63,23 @@ const PEOPLE = [
   { name: "Hollis Kane", handle: "hollis", following: false },
 ];
 
+function PauseButton({ paused, onToggle }: { paused: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      className="btn lp-pause"
+      aria-label={paused ? "Play animation" : "Pause animation"}
+      onClick={onToggle}
+    >
+      {paused ? (
+        <Play aria-hidden="true" size={14} strokeWidth={2} />
+      ) : (
+        <Pause aria-hidden="true" size={14} strokeWidth={2} />
+      )}
+    </button>
+  );
+}
+
 type Step = { title: string; body: string };
 
 const STEPS: Step[] = [
@@ -77,15 +97,25 @@ const STEPS: Step[] = [
   },
 ];
 
-function StepText({ step, row, k }: { step: Step; row: number; k: MotionValue<number> | null }) {
+/** Step i reads its openness (--k) and its body's height (--h) from the
+ *  section, which carries one of each per step. */
+function StepText({ step, index }: { step: Step; index: number }) {
   return (
-    <motion.div
+    <div
       className="lp-chap-text"
-      style={{ "--row": row, ...(k ? { "--k": k } : null) } as never}
+      style={
+        {
+          "--row": index + 2,
+          "--k": `var(--k${index}, 0)`,
+          "--h": `var(--h${index}, 6rem)`,
+        } as React.CSSProperties
+      }
     >
       <h3 className="lp-chap-title">{step.title}</h3>
-      <p className="lp-chap-body">{step.body}</p>
-    </motion.div>
+      <div className="lp-chap-fold">
+        <p className="lp-chap-body">{step.body}</p>
+      </div>
+    </div>
   );
 }
 
@@ -109,10 +139,12 @@ function Frame({
       data-frame={label}
       style={pinned ? { opacity: k, visibility } : undefined}
     >
-      <div className="lp-pic" aria-hidden="true" inert>
-        {children}
+      <div className="lp-frame-in">
+        <div className="lp-pic" aria-hidden="true" inert>
+          {children}
+        </div>
+        {extra}
       </div>
-      {extra}
     </motion.div>
   );
 }
@@ -149,14 +181,38 @@ export function Chapters() {
     };
   }, []);
 
+  // Each fold opens to its own body's height (--h0..2). The tallest
+  // (--h-max) lets the stylesheet keep the column one height while the
+  // steps trade places.
+  useEffect(() => {
+    const section = ref.current;
+    if (!pinned || !section) return;
+    const bodies = [...section.querySelectorAll<HTMLElement>(".lp-chap-body")];
+    const fit = () => {
+      const heights = bodies.map((b) => b.offsetHeight);
+      heights.forEach((h, i) => section.style.setProperty(`--h${i}`, `${h}px`));
+      section.style.setProperty("--h-max", `${Math.max(...heights)}px`);
+    };
+    fit();
+    const sizes = new ResizeObserver(fit);
+    for (const body of bodies) sizes.observe(body);
+    return () => {
+      sizes.disconnect();
+      for (const name of ["--h0", "--h1", "--h2", "--h-max"]) section.style.removeProperty(name);
+    };
+  }, [pinned]);
+
+  const togglePaused = () => setPaused((v) => !v);
+
   return (
-    <section
+    <motion.section
       ref={ref}
       aria-labelledby="how-heading"
       className="lp-chap"
       data-pinned={pinned ? "true" : undefined}
       data-loop={loop ? "true" : undefined}
       data-paused={paused ? "true" : undefined}
+      style={(pinned ? { "--k0": k0, "--k1": k1, "--k2": k2 } : undefined) as never}
     >
       <div className="lp-chap-pin">
         <div className="lp-chap-body-grid">
@@ -165,44 +221,34 @@ export function Chapters() {
           </h2>
 
           <div className="lp-chap-step">
-            <StepText step={STEPS[0]} row={2} k={pinned ? ks[0] : null} />
+            <StepText step={STEPS[0]} index={0} />
             <Frame
               k={ks[0]}
               pinned={pinned}
               label="shelf"
-              extra={
-                <button
-                  type="button"
-                  className="btn lp-pause"
-                  aria-label={paused ? "Play animation" : "Pause animation"}
-                  onClick={() => setPaused((v) => !v)}
-                >
-                  {paused ? (
-                    <Play aria-hidden="true" size={14} strokeWidth={2} />
-                  ) : (
-                    <Pause aria-hidden="true" size={14} strokeWidth={2} />
-                  )}
-                </button>
-              }
+              extra={<PauseButton paused={paused} onToggle={togglePaused} />}
             >
               <div className="lp-pic-head">
-                <span className="lp-dot" style={{ background: "var(--shelf-movies)" }} />
                 Movies
+                <span className="chip font-label">{COVERS.length}</span>
               </div>
-              <div className="lp-covers">
-                {COVERS.map((cover, i) => (
-                  <CoverBlock
-                    key={cover.title}
-                    cover={cover}
-                    className={i === 3 ? "lp-cv-left" : i === 2 ? "lp-cv-right" : ""}
-                  />
-                ))}
+              <div className="lp-shelf">
+                <div className="lp-covers">
+                  {COVERS.map((cover, i) => (
+                    <CoverBlock
+                      key={cover.title}
+                      cover={cover}
+                      className={i === 3 ? "lp-cv-left" : i === 2 ? "lp-cv-right" : ""}
+                    />
+                  ))}
+                </div>
+                <div className="lp-plank" />
               </div>
             </Frame>
           </div>
 
           <div className="lp-chap-step">
-            <StepText step={STEPS[1]} row={3} k={pinned ? ks[1] : null} />
+            <StepText step={STEPS[1]} index={1} />
             <Frame k={ks[1]} pinned={pinned} label="note">
               <div className="lp-rec-by">
                 <span className="lp-av">T</span>
@@ -216,10 +262,7 @@ export function Chapters() {
                 <CoverBlock cover={COVERS[1]} className="lp-cv-sm" />
                 <span className="lp-rec-meta">
                   <span className="lp-strong">Nosferatu</span>
-                  <span className="lp-muted">
-                    <span className="lp-dot" style={{ background: "var(--shelf-movies)" }} />
-                    Movies
-                  </span>
+                  <span className="lp-muted">Movies</span>
                 </span>
               </div>
               <p className="lp-rec-note">
@@ -230,18 +273,32 @@ export function Chapters() {
           </div>
 
           <div className="lp-chap-step">
-            <StepText step={STEPS[2]} row={4} k={pinned ? ks[2] : null} />
-            <Frame k={ks[2]} pinned={pinned} label="people">
+            <StepText step={STEPS[2]} index={2} />
+            <Frame
+              k={ks[2]}
+              pinned={pinned}
+              label="people"
+              extra={<PauseButton paused={paused} onToggle={togglePaused} />}
+            >
+              <div className="lp-pic-head">People</div>
               <ul className="lp-people">
-                {PEOPLE.map((p) => (
+                {PEOPLE.map((p, i) => (
                   <li key={p.handle} className="lp-person">
                     <span className="lp-av">{p.name[0]}</span>
                     <span className="lp-rec-who">
                       <span className="lp-strong">{p.name}</span>
                       <span className="lp-muted">@{p.handle}</span>
                     </span>
-                    <span className={p.following ? "btn" : "btn btn-primary"}>
-                      {p.following ? "Following" : "Follow"}
+                    {/* The first Follow is the one the loop presses. */}
+                    <span className={i === 0 ? "lp-follow lp-follow-loop" : "lp-follow"}>
+                      {p.following ? (
+                        <span className="btn">Following</span>
+                      ) : (
+                        <>
+                          <span className="btn btn-primary lp-follow-off">Follow</span>
+                          <span className="btn lp-follow-on">Following</span>
+                        </>
+                      )}
                     </span>
                   </li>
                 ))}
@@ -256,6 +313,6 @@ export function Chapters() {
           </p>
         </div>
       </div>
-    </section>
+    </motion.section>
   );
 }

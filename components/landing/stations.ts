@@ -2,8 +2,12 @@
 // (captions, index) and the 3D scene (lights, camera stops), so
 // the copy and the camera can never drift apart.
 
+import type { MediaCategory } from "@/lib/types";
+
 export type Station = {
   name: string;
+  /** The library category this shelf collects. */
+  category: MediaCategory;
   line: string;
   /** CSS custom property carrying the shelf hue. */
   hueVar: string;
@@ -16,6 +20,7 @@ export type Station = {
 export const STATIONS: Station[] = [
   {
     name: "Movies",
+    category: "movie",
     line: "First viewings, lifetime favorites",
     hueVar: "var(--shelf-movies)",
     hue: "#ff6f59",
@@ -23,6 +28,7 @@ export const STATIONS: Station[] = [
   },
   {
     name: "Shows",
+    category: "shows",
     line: "Series and anime you never stopped thinking about",
     hueVar: "var(--shelf-shows)",
     hue: "#5fb3ff",
@@ -30,6 +36,7 @@ export const STATIONS: Station[] = [
   },
   {
     name: "Music",
+    category: "music",
     line: "Records that rewired you",
     hueVar: "var(--shelf-music)",
     hue: "#5fd6a4",
@@ -37,6 +44,7 @@ export const STATIONS: Station[] = [
   },
   {
     name: "Video Games",
+    category: "game",
     line: "Worlds you lived in",
     hueVar: "var(--shelf-games)",
     hue: "#ff7ac0",
@@ -44,6 +52,7 @@ export const STATIONS: Station[] = [
   },
   {
     name: "Books",
+    category: "book",
     line: "Novels and manga, spines cracked from rereading",
     hueVar: "var(--shelf-books)",
     hue: "#e8d9b5",

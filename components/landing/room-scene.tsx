@@ -26,9 +26,15 @@ function hasWebGL() {
 export function RoomScene({
   progress,
   trackRef,
+  playing,
+  onLive,
 }: {
   progress: MotionValue<number>;
   trackRef: React.RefObject<HTMLElement | null>;
+  /** False while the visitor has the room paused. */
+  playing: boolean;
+  /** Told when the live canvas takes over from the poster, and when it goes. */
+  onLive: (live: boolean) => void;
 }) {
   const [mode, setMode] = useState<Mode>("poster");
   const [lite, setLite] = useState(false);
@@ -73,6 +79,10 @@ export function RoomScene({
     return () => io.disconnect();
   }, [trackRef, mode]);
 
+  useEffect(() => {
+    onLive(mode === "live");
+  }, [mode, onLive]);
+
   const onReady = useCallback(() => setMode((m) => (m === "loading" ? "live" : m)), []);
   const onLost = useCallback(() => setMode("poster"), []);
 
@@ -84,7 +94,7 @@ export function RoomScene({
       </picture>
       {mode !== "poster" && (
         <div className="room-canvas">
-          <RoomCanvas progress={progress} lite={lite} active={active} onReady={onReady} onLost={onLost} />
+          <RoomCanvas progress={progress} lite={lite} active={active} playing={playing} onReady={onReady} onLost={onLost} />
         </div>
       )}
     </div>

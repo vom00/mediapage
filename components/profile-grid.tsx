@@ -52,15 +52,6 @@ function useShelf(uid: string, shelfKey: ShelfKey): MediaItem[] {
   return picks;
 }
 
-// One hue per shelf, for the heading dot; the watchlist takes the accent.
-const SHELF_HUE: Record<string, string> = {
-  movie: "var(--shelf-movies)",
-  shows: "var(--shelf-shows)",
-  music: "var(--shelf-music)",
-  game: "var(--shelf-games)",
-  book: "var(--shelf-books)",
-};
-
 function CoverTile({ item, aspect }: { item: MediaItem; aspect: string }) {
   return (
     <div className="group w-16" title={item.title}>
@@ -131,16 +122,8 @@ function CompactShelf({
   const extra = picks.length - visible.length;
 
   return (
-    <section
-      aria-labelledby={`grid-${shelfKey}`}
-      style={
-        {
-          "--shelf-hue": SHELF_HUE[shelfKey] ?? "var(--accent)",
-        } as React.CSSProperties
-      }
-    >
-      <div className="flex items-center gap-3">
-        <span aria-hidden="true" className="shelf-mark" />
+    <section aria-labelledby={`grid-${shelfKey}`}>
+      <div className="flex items-baseline gap-3">
         <h3 id={`grid-${shelfKey}`} className="text-xl font-medium">
           {label}
         </h3>
@@ -211,11 +194,7 @@ function CompactRecommendations({
 
   return (
     <section aria-labelledby="grid-recs">
-      <div
-        className="flex items-center gap-3"
-        style={{ "--shelf-hue": "var(--accent)" } as React.CSSProperties}
-      >
-        <span aria-hidden="true" className="shelf-mark" />
+      <div className="flex items-baseline gap-3">
         <h3 id="grid-recs" className="text-xl font-medium">
           Recommendations
         </h3>

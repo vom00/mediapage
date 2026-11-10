@@ -157,7 +157,7 @@ export function LibrarySearch({
             <input
               id="library-query"
               type="search"
-              placeholder="Titles, albums, games, books…"
+              placeholder="Titles, artists, games, books…"
               autoComplete="off"
               value={rawQuery}
               onChange={(e) => setRawQuery(e.target.value)}
@@ -173,7 +173,7 @@ export function LibrarySearch({
               <label
                 key={option.value}
                 style={shelfStyle(option.value)}
-                className="relative flex min-h-11 cursor-pointer items-center gap-2 rounded-full border border-edge px-4 text-sm font-medium text-ink-muted transition-colors duration-150 ease-[cubic-bezier(0.2,0.8,0.2,1)] hover:text-ink has-checked:text-ink has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-glow"
+                className="relative flex min-h-11 cursor-pointer items-center rounded-full border border-edge px-4 text-sm font-medium text-ink-muted transition-colors duration-150 ease-[cubic-bezier(0.2,0.8,0.2,1)] hover:text-ink has-checked:text-ink has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-glow"
               >
                 <input
                   type="radio"
@@ -192,13 +192,11 @@ export function LibrarySearch({
                       ease: [0.2, 0.8, 0.2, 1],
                     }}
                     style={{ borderRadius: 9999 }}
-                    className="absolute -inset-px bg-surface-raised ring-1 ring-ink-muted"
+                    // Exactly the chip's own box: -1px covers the label's
+                    // border, and the edge is drawn inside it.
+                    className="absolute -inset-px border border-ink-muted bg-surface-raised"
                   />
                 ) : null}
-                <span
-                  aria-hidden="true"
-                  className="relative size-2 rounded-full bg-(--shelf)"
-                />
                 <span className="relative">{option.label}</span>
               </label>
             ))}
@@ -236,16 +234,14 @@ export function LibrarySearch({
           <p className="-mb-4 text-sm text-ink-muted">{items.length} results</p>
           <div className="flex flex-col gap-8">
             {pages.map((page, pageIndex) => (
-              // A new page of results fades in once, as a block.
-              <motion.ul
-                key={pageIndex}
-                initial={pageIndex > 0 && !reduceMotion ? { opacity: 0 } : false}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.24, ease: [0.2, 0.8, 0.2, 1] }}
-                className={GRID_CLASS}
-              >
-                {page.items.map((item) => (
-                  <li key={item.id} className="group relative">
+              // Each page of results arrives card by card, once.
+              <ul key={pageIndex} className={GRID_CLASS}>
+                {page.items.map((item, itemIndex) => (
+                  <li
+                    key={item.id}
+                    className="arrive group relative"
+                    style={{ "--arrive-i": itemIndex } as React.CSSProperties}
+                  >
                     <MediaCard item={item} />
                     <button
                       type="button"
@@ -256,7 +252,7 @@ export function LibrarySearch({
                     />
                   </li>
                 ))}
-              </motion.ul>
+              </ul>
             ))}
           </div>
 

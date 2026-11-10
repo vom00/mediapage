@@ -75,8 +75,8 @@ export function PeopleSearch() {
         </p>
       ) : (
         <ul className="flex list-none flex-col border-t border-edge p-0">
-          {people.map((person) => (
-            <PersonRow key={person.uid} person={person} />
+          {people.map((person, index) => (
+            <PersonRow key={person.uid} person={person} index={index} />
           ))}
         </ul>
       )}

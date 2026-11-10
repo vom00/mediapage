@@ -42,13 +42,8 @@ export function RecommendationsSection({ uid }: { uid: string }) {
   }, [uid]);
 
   return (
-    <section
-      aria-labelledby="recommendations-heading"
-      className="py-8 sm:py-10"
-      style={{ "--shelf-hue": "var(--accent)" } as React.CSSProperties}
-    >
+    <section aria-labelledby="recommendations-heading" className="py-8 sm:py-10">
       <div className="flex items-center gap-3">
-        <span aria-hidden="true" className="shelf-mark" />
         <h2
           id="recommendations-heading"
           className="text-2xl font-medium leading-none sm:text-3xl"

@@ -1,17 +1,9 @@
 /* ---- The physical shelf ----
    Cases stand on a flat plank: a plain surface board with a 1px top
    line. Hovering lifts a case 2px. No lighting, no sheens, no warm
-   shadows. Each shelf section sets --shelf-hue (its category hue) for
-   the small dot beside the shelf name. */
-
-/* Shelf name marker: a small hue dot. */
-.shelf-mark {
-  flex: none;
-  width: 8px;
-  height: 8px;
-  border-radius: 9999px;
-  background: var(--shelf-hue, var(--accent));
-}
+   shadows. Each shelf section sets --shelf-hue (its category hue): it
+   shows as the 2px front edge of the plank, never as a dot beside the
+   shelf's name. */
 
 /* The run of the shelf: on phones it scrolls sideways and each case
    snaps into place; the scrollbar stays out of the way. */
@@ -306,9 +298,10 @@ a.shelf-slot:hover {
   border-radius: 0 2px 2px 0;
 }
 
-/* The plank: a plain surface board with a 1px top line. */
+/* The plank: a plain surface board whose front edge carries the
+   shelf's hue. */
 .shelf-plank {
   height: 14px;
   background: var(--surface);
-  border-top: 1px solid var(--border);
+  border-top: 2px solid var(--shelf-hue, var(--border));
 }

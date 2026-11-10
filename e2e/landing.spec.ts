@@ -137,6 +137,112 @@ test.describe("landing", () => {
     await expect(band.getByText(/^0?[1-5] \/ 05$/)).toHaveCount(0);
   });
 
+  test("each shelf on the band opens the library on its category, and the band fits one screen", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(BASE_URL + "/");
+    const band = page.locator('section[aria-labelledby="shelves-heading"]');
+    const links = band.getByRole("link");
+    await expect(links).toHaveCount(5);
+    for (const [name, category] of [
+      ["Movies", "movie"],
+      ["Shows", "shows"],
+      ["Music", "music"],
+      ["Video Games", "game"],
+      ["Books", "book"],
+    ]) {
+      await expect(
+        band.getByRole("link", { name: new RegExp(`^${name}`) }),
+      ).toHaveAttribute("href", `/library?category=${category}`);
+    }
+
+    // One screen under the 64px nav: the heading and all five rows show
+    // together when the band is scrolled to.
+    const box = await band.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      const inner = el.firstElementChild!.getBoundingClientRect();
+      return { height: r.height, inner: inner.height, viewport: window.innerHeight };
+    });
+    expect(box.height).toBeLessThanOrEqual(box.viewport - 64 + 1);
+    expect(box.inner).toBeLessThanOrEqual(box.height + 1);
+
+    await links.nth(1).click();
+    await expect(page).toHaveURL(/\/library\?category=shows$/);
+    await expect(page.getByRole("radio", { name: /shows/i })).toBeChecked();
+  });
+
+  test("a shelf's hue is never a dot beside its name", async ({ page }) => {
+    await page.goto(BASE_URL + "/");
+    expect(await page.locator(".lp-dot, .shelf-mark").count()).toBe(0);
+    await page.goto(BASE_URL + "/library");
+    // The category chips are plain words, and the chosen one is exactly
+    // the size it was before it was chosen.
+    const chips = page.locator("fieldset label");
+    await expect(chips).toHaveCount(5);
+    const sizes = await chips.evaluateAll((els) =>
+      els.map((el) => {
+        const chip = el.getBoundingClientRect();
+        const mark = el.querySelector("[aria-hidden]")?.getBoundingClientRect();
+        return { h: chip.height, w: chip.width, mh: mark?.height, mw: mark?.width };
+      }),
+    );
+    expect(new Set(sizes.map((s) => Math.round(s.h))).size).toBe(1);
+    const chosen = sizes.find((s) => s.mh !== undefined)!;
+    expect(Math.abs(chosen.mh! - chosen.h)).toBeLessThan(0.5);
+    expect(Math.abs(chosen.mw! - chosen.w)).toBeLessThan(0.5);
+  });
+
+  test("the formats row moves in a loop with a pause, and rests as a wrapped row", async ({
+    browser,
+  }) => {
+    const animated = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    await animated.goto(BASE_URL + "/");
+    const row = animated.locator(".lp-mq");
+    await row.scrollIntoViewIfNeeded();
+    await expect(row).toHaveAttribute("data-live", "true");
+    await expect(row).toHaveAttribute("data-on", "true");
+    const list = animated.getByRole("list", { name: "What the shelves hold" });
+    await expect(list.getByRole("listitem")).toHaveCount(7);
+    const track = row.locator(".lp-mq-track").first();
+    const state = () =>
+      track.evaluate((el) => {
+        const s = getComputedStyle(el);
+        return `${s.animationName} ${s.animationPlayState}`;
+      });
+    // Hovering holds it too, so keep the pointer clear of the row.
+    await animated.mouse.move(10, 10);
+    await expect.poll(state).toBe("lp-mq running");
+    await animated.getByRole("button", { name: "Pause the moving row" }).click();
+    await animated.mouse.move(10, 10);
+    await expect.poll(state).toBe("lp-mq paused");
+    await expect(
+      animated.getByRole("button", { name: "Play the moving row" }),
+    ).toBeVisible();
+    await animated.close();
+
+    const reduced = await browser.newPage({
+      viewport: { width: 1440, height: 900 },
+      reducedMotion: "reduce",
+    });
+    await reduced.goto(BASE_URL + "/");
+    const still = reduced.locator(".lp-mq");
+    await expect(still).not.toHaveAttribute("data-live", "true");
+    await expect(
+      reduced.getByRole("list", { name: "What the shelves hold" }).getByRole("listitem"),
+    ).toHaveCount(7);
+    expect(
+      await still
+        .locator(".lp-mq-track")
+        .first()
+        .evaluate((el) => getComputedStyle(el).animationName),
+    ).toBe("none");
+    await expect(
+      reduced.getByRole("button", { name: /the moving row/i }),
+    ).toBeHidden();
+    await reduced.close();
+  });
+
   test("how a profile works pins, scrubs its frames and holds one loop", async ({
     page,
   }) => {
@@ -201,6 +307,35 @@ test.describe("landing", () => {
     ).toBeVisible();
     expect(
       await mover.evaluate((el) => getComputedStyle(el).animationPlayState),
+    ).toBe("paused");
+    await page.getByRole("button", { name: "Play animation" }).click();
+
+    // The steps work as an accordion: only the open one gives its body
+    // room, and the column keeps one height while they trade places.
+    const folds = () =>
+      page
+        .locator(".lp-chap-fold")
+        .evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().height)));
+    const column = () =>
+      page.locator(".lp-chap-more").evaluate((el) => Math.round(el.getBoundingClientRect().bottom));
+    await scrollTo(0);
+    await expect.poll(async () => (await folds())[0]).toBeGreaterThan(40);
+    expect((await folds()).slice(1)).toEqual([0, 0]);
+    const restingBottom = await column();
+    await scrollTo(1);
+    await expect.poll(async () => (await folds())[2]).toBeGreaterThan(40);
+    expect((await folds()).slice(0, 2)).toEqual([0, 0]);
+    expect(Math.abs((await column()) - restingBottom)).toBeLessThanOrEqual(1);
+
+    // The people frame holds the second loop: its first Follow is pressed
+    // and released on the same cycle, under the same pause.
+    const follow = page.locator(".lp-follow-loop");
+    expect(
+      await follow.evaluate((el) => getComputedStyle(el).animationName),
+    ).toBe("lp-follow-press");
+    await page.getByRole("button", { name: "Pause animation" }).click();
+    expect(
+      await follow.evaluate((el) => getComputedStyle(el).animationPlayState),
     ).toBe("paused");
   });
 

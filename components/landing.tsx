@@ -1,17 +1,19 @@
 "use client";
 
-import { ArrowDown } from "lucide-react";
+import { ArrowDown, ArrowUpRight, Pause, Play } from "lucide-react";
 import { motion, useScroll, useTransform, type MotionValue } from "motion/react";
 import Link from "next/link";
-import { Fragment, useRef } from "react";
+import { Fragment, useRef, useState } from "react";
 import { Chapters } from "@/components/landing/chapters";
+import { FormatsRow } from "@/components/landing/formats-row";
 import { RoomScene } from "@/components/landing/room-scene";
 import { CAPTION_SPAN, STATIONS, type Station } from "@/components/landing/stations";
 
 // The landing, top to bottom: the hero over a low-poly room; a walk
 // through that room's five stations by scrolling; one pinned moment
 // showing how a profile works; the five shelves on the page's one light
-// band; a close.
+// band, each a link into the library; a slow row of the formats those
+// shelves hold; a close.
 //
 // The walk is CSS-sized (no layout shift, no script needed to read the
 // page) and only exists under prefers-reduced-motion: no-preference.
@@ -35,10 +37,7 @@ function Caption({ station, progress }: { station: Station; progress: MotionValu
   return (
     <motion.div className="room-caption" style={{ opacity, y, visibility }}>
       <div className="card room-caption-card">
-        <p className="room-caption-name">
-          <span className="lp-dot" style={{ background: station.hueVar }} />
-          {station.name}
-        </p>
+        <p className="room-caption-name">{station.name}</p>
         <p className="room-caption-line">{station.line}</p>
       </div>
     </motion.div>
@@ -47,6 +46,10 @@ function Caption({ station, progress }: { station: Station; progress: MotionValu
 
 export function Landing() {
   const trackRef = useRef<HTMLElement>(null);
+  // The room moves on its own for as long as it is on screen, so it
+  // carries a pause control once the live scene is up.
+  const [live, setLive] = useState(false);
+  const [playing, setPlaying] = useState(true);
   const { scrollYProgress } = useScroll({
     target: trackRef,
     offset: ["start start", "end end"],
@@ -66,7 +69,7 @@ export function Landing() {
     <div className="room-page">
       <section ref={trackRef} className="room-track" aria-label="A walk through the room">
         <div className="room-stage">
-          <RoomScene progress={scrollYProgress} trackRef={trackRef} />
+          <RoomScene progress={scrollYProgress} trackRef={trackRef} playing={playing} onLive={setLive} />
 
           {/* Captions name each station as the camera settles on it. They
               repeat the shelf index below, so they stay out of the
@@ -77,17 +80,35 @@ export function Landing() {
             ))}
           </div>
 
-          <motion.div className="room-skip" style={{ opacity: chrome, visibility: chromeVisibility }}>
-            <button
+          {/* The pause stays for as long as the room is on screen; the
+              skip leaves once the walk has run its course. */}
+          <div className="room-skip">
+            {live ? (
+              <button
+                type="button"
+                onClick={() => setPlaying((v) => !v)}
+                aria-label={playing ? "Pause the room" : "Play the room"}
+                title={playing ? "Pause the room" : "Play the room"}
+                className="btn room-skip-btn"
+              >
+                {playing ? (
+                  <Pause aria-hidden="true" size={16} strokeWidth={2} />
+                ) : (
+                  <Play aria-hidden="true" size={16} strokeWidth={2} />
+                )}
+              </button>
+            ) : null}
+            <motion.button
               type="button"
               onClick={skipToShelves}
               aria-label="Skip to the five shelves"
               title="Skip to the five shelves"
               className="btn room-skip-btn"
+              style={{ opacity: chrome, visibility: chromeVisibility }}
             >
               <ArrowDown aria-hidden="true" size={18} strokeWidth={2} />
-            </button>
-          </motion.div>
+            </motion.button>
+          </div>
         </div>
 
         {/* Hero: stands over the room for one screen, then scrolls away
@@ -136,11 +157,17 @@ export function Landing() {
           <ul className="lp-idx-list">
             {STATIONS.map((station) => (
               <li key={station.name} className="lp-idx-row">
-                <span className="lp-idx-name">
-                  <span className="lp-dot lp-dot-lg" style={{ background: station.hueVar }} />
-                  {station.name}
-                </span>
-                <span className="lp-idx-line text-inv-muted">{station.line}</span>
+                <Link
+                  href={`/library?category=${station.category}`}
+                  className="lp-idx-link"
+                  style={{ "--hue": station.hueVar } as React.CSSProperties}
+                >
+                  <span className="lp-idx-name">
+                    {station.name}
+                    <ArrowUpRight aria-hidden="true" className="lp-idx-arrow" strokeWidth={1.5} />
+                  </span>
+                  <span className="lp-idx-line text-inv-muted">{station.line}</span>
+                </Link>
               </li>
             ))}
           </ul>
@@ -148,12 +175,15 @@ export function Landing() {
       </section>
 
       <section aria-labelledby="close-heading" className="lp-close">
-        <h2 id="close-heading" className="lp-close-title">
-          The next shelf is yours to fill.
-        </h2>
-        <Link href="/login" className="btn btn-primary room-cta">
-          Start your shelf
-        </Link>
+        <FormatsRow />
+        <div className="lp-close-in">
+          <h2 id="close-heading" className="lp-close-title">
+            The next shelf is yours to fill.
+          </h2>
+          <Link href="/login" className="btn btn-primary room-cta">
+            Start your shelf
+          </Link>
+        </div>
       </section>
     </div>
   );

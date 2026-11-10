@@ -107,7 +107,17 @@
    Tiered rows of book spines built from interfering repeating gradients,
    drifting dust and a flat dimming layer. All greys: it reads as a dim
    neutral scene behind the card. Decorative; fully inert under reduced
-   motion. */
+   motion. The stacks climb the whole wall, each tier shorter and dimmer
+   than the one below, and the wall fades out toward the ceiling, so the
+   scene has no top edge. */
+
+.library-wall {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(to top, #000 48%, transparent 94%);
+  mask-image: linear-gradient(to top, #000 48%, transparent 94%);
+}
 
 .library-row {
   position: absolute;
@@ -161,6 +171,36 @@
   bottom: 43vh;
   height: 9vh;
   opacity: 0.32;
+}
+
+.library-row-high {
+  bottom: 54vh;
+  height: 7vh;
+  opacity: 0.24;
+}
+
+.library-row-higher {
+  bottom: 63vh;
+  height: 5.5vh;
+  opacity: 0.18;
+}
+
+.library-row-upper {
+  bottom: 70.5vh;
+  height: 4.5vh;
+  opacity: 0.14;
+}
+
+.library-row-top {
+  bottom: 77vh;
+  height: 4vh;
+  opacity: 0.11;
+}
+
+.library-row-last {
+  bottom: 83vh;
+  height: 3.5vh;
+  opacity: 0.09;
 }
 
 .mote {
@@ -626,8 +666,16 @@
     animation: library-drift 110s ease-in-out infinite alternate-reverse;
   }
 
-  .library-row-far {
+  .library-row-far,
+  .library-row-higher,
+  .library-row-top {
     animation: library-drift 140s ease-in-out infinite alternate;
+  }
+
+  .library-row-high,
+  .library-row-upper,
+  .library-row-last {
+    animation: library-drift 170s ease-in-out infinite alternate-reverse;
   }
 
   .mote {

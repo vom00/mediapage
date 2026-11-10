@@ -14,10 +14,18 @@ import type { UserProfile } from "@/lib/types";
 // shares, so loading never shifts the page.
 export const PERSON_ROW_HEIGHT = "min-h-[4.5rem]";
 
-export function PersonRow({ person }: { person: UserProfile }) {
+export function PersonRow({
+  person,
+  index = 0,
+}: {
+  person: UserProfile;
+  /** Place in the list: rows arrive one after another. */
+  index?: number;
+}) {
   return (
     <li
-      className={`flex items-center gap-4 border-b border-edge py-3 ${PERSON_ROW_HEIGHT}`}
+      className={`arrive flex items-center gap-4 border-b border-edge py-3 ${PERSON_ROW_HEIGHT}`}
+      style={{ "--arrive-i": index } as React.CSSProperties}
     >
       <Link
         href={`/u/${person.handle}`}
@@ -122,8 +130,8 @@ export function FollowList({
           </p>
         ) : (
           <ul className="flex list-none flex-col border-t border-edge p-0">
-            {people.map((person) => (
-              <PersonRow key={person.uid} person={person} />
+            {people.map((person, index) => (
+              <PersonRow key={person.uid} person={person} index={index} />
             ))}
           </ul>
         )}

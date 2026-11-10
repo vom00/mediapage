@@ -129,13 +129,7 @@ export function MediaDetailDialog({
       {item ? (
         <div>
           <div className="flex items-center justify-between gap-4 px-5 pt-3 sm:px-8 sm:pt-5">
-            <p className="flex items-center gap-2.5 text-sm text-ink-muted">
-              <span
-                aria-hidden="true"
-                className="size-2 rounded-full bg-(--shelf)"
-              />
-              {shelfLabel}
-            </p>
+            <p className="chip">{shelfLabel}</p>
             <button
               type="button"
               onClick={onClose}

@@ -363,6 +363,30 @@ h3 {
   }
 }
 
+/* ---- Arrivals ----
+   A list that has just loaded (search results, people, the feed) comes
+   in one item after another: each fades up 8px, 28ms behind the one
+   before it, the first ten in turn and the rest together. Once, when the
+   item is first put on the page; never on scroll. --arrive-i is the
+   item's place in its list. */
+@keyframes arrive {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .arrive {
+    animation: arrive 320ms var(--ease-enter) both;
+    animation-delay: calc(min(var(--arrive-i, 0), 10) * 28ms);
+  }
+}
+
 /* Dialogs rise softly into place; the backdrop blurs in with them.
    Uses @starting-style so the entrance runs on showModal(). */
 dialog {
