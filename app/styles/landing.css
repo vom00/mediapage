@@ -873,6 +873,20 @@
   }
 }
 
+/* The arrow draws itself, after Ruixen UI's Animated Link (MIT, © 2025 Ruixen UI). */
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .lp-idx-arrow path {
+    stroke-dasharray: 32;
+    stroke-dashoffset: 32;
+    transition: stroke-dashoffset 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .lp-idx-link:hover .lp-idx-arrow path,
+  .lp-idx-link:focus-visible .lp-idx-arrow path {
+    stroke-dashoffset: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .lp-idx-link::before,
   .lp-idx-name,

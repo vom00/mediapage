@@ -94,6 +94,9 @@ export function LibrarySearch({
     initialCategory ?? "movie",
   );
   const reduceMotion = useReducedMotion();
+  // Hover-following indicator after Ruixen UI's Magnetic Tabs (MIT, © 2025 Ruixen UI).
+  const [hovered, setHovered] = useState<MediaCategory | null>(null);
+  const indicatorAt = hovered ?? category;
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
   const query = useDebouncedValue(rawQuery.trim(), 300);
 
@@ -168,29 +171,45 @@ export function LibrarySearch({
 
         <fieldset>
           <legend className="sr-only">Category</legend>
-          <div className="flex flex-wrap gap-2">
+          <div
+            className="flex flex-wrap gap-2"
+            onPointerLeave={() => setHovered(null)}
+          >
             {CATEGORY_OPTIONS.map((option) => (
               <label
                 key={option.value}
+                onPointerEnter={(e) => {
+                  if (reduceMotion || e.pointerType === "touch") return;
+                  setHovered(option.value);
+                }}
                 style={shelfStyle(option.value)}
-                className="relative flex min-h-11 cursor-pointer items-center rounded-full border border-edge px-4 text-sm font-medium text-ink-muted transition-colors duration-150 ease-[cubic-bezier(0.2,0.8,0.2,1)] hover:text-ink has-checked:text-ink has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-glow"
+                className="relative flex min-h-11 cursor-pointer items-center rounded-full border border-edge px-4 text-sm font-medium text-ink-muted transition-colors duration-150 ease-[cubic-bezier(0.2,0.8,0.2,1)] hover:text-ink has-checked:border-ink-muted has-checked:text-ink has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-glow"
               >
                 <input
                   type="radio"
                   name="library-category"
                   value={option.value}
                   checked={category === option.value}
-                  onChange={() => setCategory(option.value)}
+                  onChange={() => {
+                    setCategory(option.value);
+                    // A keyboard change must win over a resting pointer.
+                    setHovered(null);
+                  }}
                   className="absolute inset-0 z-10 cursor-pointer appearance-none opacity-0"
                 />
-                {category === option.value ? (
+                {indicatorAt === option.value ? (
                   <motion.span
                     aria-hidden="true"
                     layoutId="library-category-indicator"
-                    transition={{
-                      duration: reduceMotion ? 0 : 0.24,
-                      ease: [0.2, 0.8, 0.2, 1],
-                    }}
+                    transition={
+                      reduceMotion
+                        ? { duration: 0 }
+                        : {
+                            type: "spring",
+                            stiffness: hovered ? 300 : 500,
+                            damping: hovered ? 25 : 40,
+                          }
+                    }
                     style={{ borderRadius: 9999 }}
                     // Exactly the chip's own box: -1px covers the label's
                     // border, and the edge is drawn inside it.

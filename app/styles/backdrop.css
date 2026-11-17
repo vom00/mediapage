@@ -3,8 +3,8 @@
    are unlayered, so they outrank the primitives in globals.css' layer. */
 
 /* Nav words: a 1px underline draws left to right under the word on hover
-   or keyboard focus and leaves to the right; the current page keeps a 2px
-   bar. The line sits 4px under the word. */
+   or keyboard focus and leaves to the right; the current page's 2px bar
+   is a span in site-nav.tsx that slides between links. The line sits 4px under the word. */
 .nav-word {
   position: relative;
 }
@@ -25,12 +25,6 @@
 .nav-link:focus-visible .nav-word::after {
   transform: scaleX(1);
   transform-origin: left center;
-}
-
-.nav-link[data-current="true"] .nav-word::after {
-  height: 2px;
-  background: var(--text);
-  transform: scaleX(1);
 }
 
 @media (hover: hover) and (pointer: fine) {

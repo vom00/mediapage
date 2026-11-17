@@ -109,7 +109,14 @@ export function watchNotificationsSeenAt(
 ): Unsubscribe {
   return onSnapshot(
     seenRef(db, ownerUid),
-    (snap) => cb(snap.exists() ? readSeenAt(snap.data()) : null),
+    // Estimate the pending server stamp: left null, the moment after
+    // "seen" is written would read as "never looked" and count everything.
+    (snap) =>
+      cb(
+        snap.exists()
+          ? readSeenAt(snap.data({ serverTimestamps: "estimate" }))
+          : null,
+      ),
     () => cb(null),
   );
 }

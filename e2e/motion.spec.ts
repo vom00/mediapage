@@ -96,3 +96,74 @@ test.describe("motion and reduced motion", () => {
     expect(reduced).not.toMatch(LIFTED);
   });
 });
+
+test.describe("small motion", () => {
+  test("the chip highlight follows the pointer, and the selection never does", async ({
+    page,
+  }) => {
+    await page.goto(BASE_URL + "/library");
+    const chips = page.locator("fieldset label");
+    const marked = () =>
+      chips.evaluateAll((els) =>
+        els.findIndex((el) => el.querySelector("[aria-hidden]")),
+      );
+    expect(await marked()).toBe(0);
+
+    await chips.nth(2).hover();
+    await expect.poll(marked).toBe(2);
+    await expect(page.getByRole("radio", { name: /movies/i })).toBeChecked();
+
+    // A keyboard change wins over the resting pointer.
+    await page.getByRole("radio", { name: /movies/i }).press("ArrowRight");
+    await expect(page.getByRole("radio", { name: /shows/i })).toBeChecked();
+    await expect.poll(marked).toBe(1);
+
+    await page.mouse.move(5, 5);
+    await expect.poll(marked).toBe(1);
+  });
+
+  test("the nav bar slides sideways to the new page, even from a scrolled one", async ({
+    page,
+  }) => {
+    await page.goto(BASE_URL + "/library");
+    await page.evaluate(() => window.scrollTo(0, 600));
+    const tops = await page.evaluate(async () => {
+      const seen: number[] = [];
+      const start = performance.now();
+      document.querySelector<HTMLAnchorElement>('nav a[href="/people"]')!.click();
+      await new Promise<void>((done) => {
+        const frame = () => {
+          const bar = document.querySelector(".nav-word [aria-hidden]");
+          if (bar) seen.push(Math.round(bar.getBoundingClientRect().top));
+          if (performance.now() - start < 700) requestAnimationFrame(frame);
+          else done();
+        };
+        frame();
+      });
+      return seen;
+    });
+    await expect(page).toHaveURL(/\/people$/);
+    await expect(
+      page.locator('nav a[href="/people"] .nav-word [aria-hidden]'),
+    ).toBeVisible();
+    // It never leaves its line under the words.
+    expect(Math.max(...tops) - Math.min(...tops)).toBeLessThanOrEqual(1);
+  });
+
+  test("the eye shows and hides the password without leaving the field", async ({
+    page,
+  }) => {
+    await page.goto(BASE_URL + "/login");
+    const field = page.getByLabel(/^password/i);
+    const eye = page.getByRole("button", { name: "Show password" });
+    await field.fill("not-a-real-one");
+    await expect(field).toHaveAttribute("type", "password");
+    await eye.click();
+    await expect(field).toHaveAttribute("type", "text");
+    await expect(eye).toHaveAttribute("aria-pressed", "true");
+    await expect(field).toBeFocused();
+    await expect(field).toHaveValue("not-a-real-one");
+    await eye.click();
+    await expect(field).toHaveAttribute("type", "password");
+  });
+});

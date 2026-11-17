@@ -14,6 +14,7 @@ import {
   inputClass,
   labelClass,
 } from "@/components/form-field";
+import { PasswordField } from "@/components/password-field";
 import { authErrorMessage } from "@/lib/auth-errors";
 import { auth } from "@/lib/firebase/client";
 
@@ -93,9 +94,8 @@ export function LoginForm() {
           <label htmlFor="password" className={labelClass}>
             Password
           </label>
-          <input
+          <PasswordField
             id="password"
-            type="password"
             autoComplete={mode === "login" ? "current-password" : "new-password"}
             required
             minLength={6}

@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { CoverImage } from "@/components/cover-image";
+import { RollingNumber } from "@/components/rolling-number";
 import { ShelfPiece } from "@/components/shelf-piece";
 import { db } from "@/lib/firebase/client";
 import { PIECE_ASPECT } from "@/lib/shelf-piece";
@@ -139,7 +140,9 @@ export function ShelfRow({
               Add
             </Link>
           ) : null}
-          <p className="chip font-label">{picks.length}</p>
+          <p className="chip font-label">
+            {loaded ? <RollingNumber value={picks.length} /> : 0}
+          </p>
         </div>
       </div>
 

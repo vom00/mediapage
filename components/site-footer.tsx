@@ -84,6 +84,27 @@ export function SiteFooter() {
             </a>
             .
           </p>
+          <p>
+            Interface motion adapted from{" "}
+            <a
+              href="https://rareui.com"
+              className={LINK}
+              rel="noreferrer"
+              target="_blank"
+            >
+              Rare UI
+            </a>{" "}
+            and{" "}
+            <a
+              href="https://ruixen.com"
+              className={LINK}
+              rel="noreferrer"
+              target="_blank"
+            >
+              Ruixen UI
+            </a>
+            .
+          </p>
         </div>
       </div>
     </footer>

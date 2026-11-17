@@ -16,6 +16,7 @@ import { useAuth } from "@/components/auth-provider";
 import { FollowButton } from "@/components/follow-button";
 import { ProfileGrid } from "@/components/profile-grid";
 import { RecommendationsSection } from "@/components/recommendations-section";
+import { RollingNumber } from "@/components/rolling-number";
 import { ShelfRow } from "@/components/shelf-row";
 import { CATEGORY_LABELS, CATEGORY_ORDER } from "@/lib/categories";
 import { db } from "@/lib/firebase/client";
@@ -36,10 +37,13 @@ type ViewState =
 export function ProfileView({ handle }: { handle: string }) {
   const { user } = useAuth();
   const [state, setState] = useState<ViewState>({ kind: "loading" });
-  const [counts, setCounts] = useState<{ followers: number; following: number }>({
-    followers: 0,
-    following: 0,
-  });
+  // Tagged with the profile they belong to, so a number only rolls when
+  // this profile's own count changes, never on arrival or between profiles.
+  const [counts, setCounts] = useState<{
+    uid: string;
+    followers: number;
+    following: number;
+  } | null>(null);
   // Layout is a per-viewer preference applied to every profile, not a
   // profile setting. Read this browser's saved choice as the initial
   // value (server-safe via the window guard). It only reaches the DOM
@@ -61,6 +65,7 @@ export function ProfileView({ handle }: { handle: string }) {
       getCountFromServer(query(follows, where("followerUid", "==", uid), approved)),
     ]);
     setCounts({
+      uid,
       followers: followers.data().count,
       following: following.data().count,
     });
@@ -157,6 +162,7 @@ export function ProfileView({ handle }: { handle: string }) {
 
   const { uid, profile } = state;
   const isOwner = user?.uid === uid;
+  const own = counts?.uid === uid ? counts : null;
 
   function toggleLayout() {
     const next: ProfileLayout = layout === "grid" ? "stacked" : "grid";
@@ -195,7 +201,9 @@ export function ProfileView({ handle }: { handle: string }) {
                   className="inline-flex min-h-11 items-center hover:text-ink"
                 >
                   <span className="link">
-                    <span className="font-label text-ink">{counts.followers}</span>{" "}
+                    <span className="font-label text-ink">
+                      {own ? <RollingNumber key={uid} value={own.followers} /> : 0}
+                    </span>{" "}
                     followers
                   </span>
                 </Link>
@@ -204,7 +212,9 @@ export function ProfileView({ handle }: { handle: string }) {
                   className="inline-flex min-h-11 items-center hover:text-ink"
                 >
                   <span className="link">
-                    <span className="font-label text-ink">{counts.following}</span>{" "}
+                    <span className="font-label text-ink">
+                      {own ? <RollingNumber key={uid} value={own.following} /> : 0}
+                    </span>{" "}
                     following
                   </span>
                 </Link>
