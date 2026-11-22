@@ -1,106 +1,104 @@
 # mediapage
 
-A Letterboxd-style profile for everything you love — five favorites each across
-**Movies, Shows, Music, Video Games, and Books**, plus recommendations,
-following, and notifications.
+![mediapage demo](docs/demo.gif)
 
-Built with Next.js (App Router) + React, TypeScript, Tailwind CSS, and Firebase
-(Auth, Firestore, Storage). There is no custom backend — **Firestore security
-rules are the security boundary.**
+mediapage gives you one public profile with shelves for your favorite movies, shows, music, video games, and books, so people can see your taste in everything on one page.
 
-## Local development
+**Try it:** [mediapage.vercel.app](https://mediapage.vercel.app) · my profile: [/u/vyommehta](https://mediapage.vercel.app/u/vyommehta)
 
-Local dev runs fully offline against the Firebase Emulator Suite, so it needs no
-real project and costs nothing.
+## What you can do
 
-Prerequisites: Node 20+, and a **JDK 21+** (the Firestore emulator requires it).
+- Fill five shelves (Movies, Shows, Music, Video Games, Books) plus a watchlist. Each shelf holds up to 100 picks, and your top five show on your profile.
+- Search every shelf from one place. Shows include TV and anime, Books include manga, and Music is artists.
+- Write short recommendations and follow people whose taste you like.
+- Keep your profile public, or make it private and approve follow requests.
+- Get notified about new followers and follow requests.
+- Find other people by handle.
+
+The landing page is a low-poly 3D room you scroll through, one stop per shelf.
+
+## Built with
+
+- [Claude Code](https://claude.com/claude-code)
+- Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4
+- Firebase Auth, Firestore, and Storage (no custom backend; Firestore security rules do the access control)
+- three.js with React Three Fiber, using [Kenney](https://kenney.nl) CC0 models
+- Motion for animation, TanStack Query for data fetching
+- Media data: TMDB (movies and TV), AniList with a Jikan fallback (anime and manga), Deezer (music artists), Open Library (books), and IGDB for games, falling back to Steam search when IGDB keys aren't set
+- Vitest and Playwright for tests
+
+## Run it locally
+
+Local dev runs against the Firebase Emulator Suite, so you don't need a real Firebase project.
+
+You need Node 20+ and JDK 21+ (the Firestore emulator requires Java).
 
 ```bash
+git clone https://github.com/vom00/mediapage.git
+cd mediapage
 npm install
+cp .env.example .env.local
+```
 
-# Terminal 1 — emulators (auth, firestore, storage)
+To get search results, add a free [TMDB key](https://www.themoviedb.org/settings/api) to `.env.local` as `TMDB_API_KEY`. Music, books, anime, and games (through Steam) work without keys.
+
+Then, in two terminals:
+
+```bash
+# Terminal 1: Firebase emulators (auth, firestore, storage)
 npx firebase emulators:start --only auth,firestore,storage --project demo-mediapage
 
-# Terminal 2 — dev server at http://localhost:3000
+# Terminal 2: dev server at http://localhost:3000
 npm run dev
 ```
 
-`.env.local` keeps `NEXT_PUBLIC_FIREBASE_EMULATORS=1`, so the app talks to the
-emulators. To run local dev against the real Firebase project instead, remove
-that line and add the values from [Environment variables](#environment-variables).
-
-## Testing
+## Tests
 
 ```bash
 npm run test    # unit + integration (integration needs the emulators running)
 npm run lint
-npm run e2e      # Playwright (needs the emulators + the e2e dev server)
+npm run e2e     # Playwright (needs the emulators)
 ```
 
 ## Deploy
 
-The app is server-rendered (dynamic routes plus the `/api/search` route), so it
-needs a Node host. Recommended: **Vercel** for the app, **Firebase** (free Spark
-plan) for Auth and data. Firebase project: `mediapage-c4281`.
+The app is server-rendered (dynamic routes plus the `/api/search` route), so it needs a Node host. I use Vercel for the app and Firebase's free Spark plan for auth and data.
 
-### 1. Publish the security rules + indexes (one-time, and whenever they change)
+1. Publish the security rules and indexes (once, and again whenever they change):
 
-```bash
-npx firebase login
-npx firebase deploy --only firestore:rules,firestore:indexes
-```
+   ```bash
+   npx firebase login
+   npx firebase deploy --only firestore:rules,firestore:indexes
+   ```
 
-A brand-new Firestore denies everything until these rules are deployed. Indexes
-build asynchronously and may take a few minutes.
+   A new Firestore project denies everything until these rules are deployed.
 
-### 2. Deploy the app to Vercel
+2. Deploy to Vercel with `npx vercel`, add the environment variables below in the Vercel dashboard, then run `npx vercel --prod`.
 
-```bash
-npx vercel            # link or create the Vercel project
-# then add the env vars below in the Vercel dashboard
-#   (Project → Settings → Environment Variables), and:
-npx vercel --prod     # promote to your production URL
-```
-
-### 3. After the first deploy
-
-- Firebase Console → **Authentication → Settings → Authorized domains** → add
-  your Vercel domain (e.g. `mediapage-xxxx.vercel.app`). Required for **Google**
-  sign-in; email/password works without it.
+3. In the Firebase console, add your Vercel domain under Authentication > Settings > Authorized domains. Google sign-in needs this; email and password sign-in works without it.
 
 ## Environment variables
 
-**Client** (public, `NEXT_PUBLIC_`) — set these in Vercel:
+See [`.env.example`](.env.example) for the full list.
+
+Client values (`NEXT_PUBLIC_`), from Firebase Project settings > Your apps:
 
 | Variable | Value |
 | --- | --- |
-| `NEXT_PUBLIC_FIREBASE_API_KEY` | `AIzaSyDGydVGkXMYuPZt7SWLSFHnBuSVsH4AXUE` |
-| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | `mediapage-c4281.firebaseapp.com` |
-| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | `mediapage-c4281` |
-| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | `mediapage-c4281.firebasestorage.app` |
-| `NEXT_PUBLIC_FIREBASE_APP_ID` | `1:250117114491:web:3c1a271167341e934170de` |
+| `NEXT_PUBLIC_FIREBASE_API_KEY` | your Firebase web API key |
+| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | `<project-id>.firebaseapp.com` |
+| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | `<project-id>` |
+| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | `<project-id>.firebasestorage.app` |
+| `NEXT_PUBLIC_FIREBASE_APP_ID` | your Firebase app ID |
 
-These are public by design (a Firebase web key identifies the project; access is
-controlled by the rules + Auth). Do **not** set `NEXT_PUBLIC_FIREBASE_EMULATORS`
-in production.
+A Firebase web config is public by design: it identifies the project, and the security rules plus Auth control access. Don't set `NEXT_PUBLIC_FIREBASE_EMULATORS` in production.
 
-**Server** (secret — never `NEXT_PUBLIC_`) — set in Vercel; optional, but the
-library search returns no results without them:
+Server keys (never prefix these with `NEXT_PUBLIC_`):
 
-| Variable | Purpose | Get a free key |
+| Variable | Used for | Get a free key |
 | --- | --- | --- |
-| `TMDB_API_KEY` | Movie / TV / anime search | themoviedb.org/settings/api |
-| `IGDB_CLIENT_ID` | Video-game search (every platform) | dev.twitch.tv/console/apps |
-| `IGDB_CLIENT_SECRET` | Video-game search (every platform) | dev.twitch.tv/console/apps |
+| `TMDB_API_KEY` | Movie and TV search (required) | [themoviedb.org/settings/api](https://www.themoviedb.org/settings/api) |
+| `IGDB_CLIENT_ID` | Game search across every platform (optional) | [dev.twitch.tv/console/apps](https://dev.twitch.tv/console/apps) |
+| `IGDB_CLIENT_SECRET` | Game search across every platform (optional) | [dev.twitch.tv/console/apps](https://dev.twitch.tv/console/apps) |
 
-TMDB is the only **required** key. Music (Deezer artists), books (Open
-Library), and the anime fallback (Jikan/MyAnimeList) use keyless public
-endpoints.
-
-**Video games** use [IGDB](https://www.igdb.com) — the full cross-platform
-catalogue — when `IGDB_CLIENT_ID` + `IGDB_CLIENT_SECRET` are set. IGDB is free:
-create an app at [dev.twitch.tv/console/apps](https://dev.twitch.tv/console/apps)
-to get the Client ID and Client Secret (it's Twitch-operated). Until those are
-set, the games shelf automatically falls back to Steam's keyless storefront
-search, so it still works with no setup — it's just limited to games sold on
-Steam.
+Without the IGDB keys, the games shelf uses Steam's keyless store search, which only covers games sold on Steam.
